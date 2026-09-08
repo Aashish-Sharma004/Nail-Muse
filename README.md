@@ -1,1 +1,1 @@
-live website : https://nnail-muse.vercel.app/login
+live website : https://nnail-muse.vercel.app
