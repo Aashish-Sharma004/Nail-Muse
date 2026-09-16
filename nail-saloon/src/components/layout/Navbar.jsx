@@ -7,9 +7,15 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Simulated authentication check (Aap ise apne Auth context ke sath replace kar sakte hain)
-  // For demo, let's assume user is logged in if they are on /account, /appointments, /rewards, etc.
-  const isLoggedIn = ['/account', '/appointments', '/rewards', '/booking/technician'].includes(location.pathname) || localStorage.getItem('isLoggedIn') === 'true';
+  // Read authenticated user state
+  const storedUser = localStorage.getItem('user');
+  let currentUser = null;
+  try {
+    currentUser = storedUser ? JSON.parse(storedUser) : null;
+  } catch {}
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.email === 'admin123@gmail.com';
+
+  const isLoggedIn = ['/account', '/dashboard', '/appointments', '/rewards', '/booking/technician'].includes(location.pathname) || localStorage.getItem('isLoggedIn') === 'true';
 
   const handleServicesClick = (e) => {
     if (!isLoggedIn) {
@@ -55,6 +61,16 @@ const Navbar = () => {
 
             <Link to="/about" className="text-[#4A3B32] hover:text-[#2B1E16] px-3 py-2 text-sm font-medium transition-colors">About Us</Link>
             <Link to="/contact" className="text-[#4A3B32] hover:text-[#2B1E16] px-3 py-2 text-sm font-medium transition-colors">Contact</Link>
+
+            {/* Admin Panel link: ONLY visible to authenticated admin */}
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className="text-xs uppercase tracking-wider font-bold text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl hover:bg-amber-200 transition-colors shadow-2xs"
+              >
+                ⚙ Admin Panel
+              </Link>
+            )}
           </div>
 
           {/* Right Action: My Account / Login Button */}
@@ -103,6 +119,15 @@ const Navbar = () => {
             >
               Services
             </Link>
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                className="block text-amber-950 font-bold px-3 py-2 text-base rounded-lg bg-amber-100"
+              >
+                ⚙ Admin Panel
+              </Link>
+            )}
             <Link 
               to="/about" 
               onClick={() => setIsMobileMenuOpen(false)}

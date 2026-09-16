@@ -5,20 +5,33 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
+const settingRoutes = require('./routes/settingRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// MongoDB Connection
+// MongoDB Connection with auto-retry
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/nailmuse';
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected Successfully'))
-  .catch((err) => console.error('❌ MongoDB Connection Error:', err));
+const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGO_URI);
+    console.log('✅ MongoDB Connected Successfully to Atlas');
+  } catch (err) {
+    console.error('❌ MongoDB Connection Error (retrying in 2s):', err.message);
+    setTimeout(connectDB, 2000);
+  }
+};
+connectDB();
 
 // Register Routes Properly
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/settings', settingRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
   res.send('NailMuse Studio Backend is running...');

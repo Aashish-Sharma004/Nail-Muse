@@ -1,9 +1,9 @@
-// src/pages/Services/ServiceList.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getServices } from '../../services/api';
 
-// Updated with verified, stable image URLs
-const serviceData = [
+// Fallback initial services if backend is initializing
+const fallbackServiceData = [
   {
     id: 1, category: 'Essentials', title: 'Signature Manicure', price: '$45+', duration: '45 mins',
     image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=600&q=80',
@@ -70,13 +70,29 @@ const categories = ['All', 'Essentials', 'Enhancements', 'Nail Art', 'Treatments
 
 const ServiceList = () => {
   const navigate = useNavigate();
+  const [services, setServices] = useState(fallbackServiceData);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredServices = serviceData.filter(service => {
+  useEffect(() => {
+    getServices()
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setServices(res.data);
+        }
+      })
+      .catch(err => {
+        console.warn('Using fallback services:', err);
+      });
+  }, []);
+
+  const filteredServices = services.filter(service => {
+    // Only show available services if isAvailable is defined
+    if (service.isAvailable === false) return false;
+
     const matchesCategory = activeCategory === 'All' || service.category === activeCategory;
-    const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          service.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (service.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (service.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -134,7 +150,7 @@ const ServiceList = () => {
         {filteredServices.length > 0 ? (
           filteredServices.map((service) => (
             <div 
-              key={service.id} 
+              key={service._id || service.id} 
               className="bg-white border border-[#F0EBE1] rounded-2xl overflow-hidden flex flex-col group hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
               <div className="relative h-56 overflow-hidden bg-[#F5EFE6]">

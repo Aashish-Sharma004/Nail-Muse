@@ -1,9 +1,51 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API = axios.create({ baseURL: 'http://localhost:5000/api' });
+// Read backend API base URL from Vite environment variables
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
+const API = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Automatically inject JWT token from localStorage if available
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Authentication endpoints
 export const loginUser = (formData) => API.post('/auth/login', formData);
 export const registerUser = (formData) => API.post('/auth/register', formData);
+
+// Booking endpoints
 export const createBooking = (bookingData) => API.post('/bookings/create', bookingData);
-export const getUserBookings = (email) => API.get(`/bookings/user/${email}`);
+export const getUserBookings = (email) => API.get(`/bookings/user/${encodeURIComponent(email)}`);
+export const getAllBookings = (params) => API.get('/bookings', { params });
+export const getBookingStats = () => API.get('/bookings/stats');
+export const updateBookingStatus = (id, status) => API.patch(`/bookings/${id}/status`, { status });
+export const deleteBooking = (id) => API.delete(`/bookings/${id}`);
+
+// Services endpoints (for live catalog updates)
+export const getServices = () => API.get('/services');
+export const createService = (serviceData) => API.post('/services', serviceData);
+export const updateService = (id, serviceData) => API.put(`/services/${id}`, serviceData);
+export const deleteService = (id) => API.delete(`/services/${id}`);
+
+// Salon Settings & Announcement endpoints (for live site-wide updates)
+export const getSalonSettings = () => API.get('/settings');
+export const updateSalonSettings = (settingsData) => API.put('/settings', settingsData);
+
+// Client / User management endpoints
+export const getAllUsers = () => API.get('/users');
+export const updateUserLoyalty = (id, loyaltyData) => API.patch(`/users/${id}/loyalty`, loyaltyData);
+
+export default API;

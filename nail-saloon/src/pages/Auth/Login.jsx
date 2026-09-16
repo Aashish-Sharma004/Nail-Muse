@@ -1,7 +1,7 @@
 // src/pages/Auth/Login.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { loginUser } from '../../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -25,19 +25,23 @@ const Login = () => {
     setError('');
 
     try {
-      // Real backend login request
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      // Backend login request via environment-configured API service
+      const response = await loginUser({
         email: formData.emailOrPhone,
         password: formData.password
       });
 
-      // Save token and user details in localStorage
+      const loggedUser = response.data.user;
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('isLoggedIn', 'true');
 
-      // Navigate to Account dashboard
-      navigate('/account');
+      // Navigate based on role: Admin to /admin, clients to /account
+      if (loggedUser?.role === 'admin' || loggedUser?.email === 'admin123@gmail.com') {
+        navigate('/admin');
+      } else {
+        navigate('/account');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
     } finally {

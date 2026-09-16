@@ -1,7 +1,7 @@
 // src/pages/Auth/Register.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { registerUser } from '../../services/api';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -28,8 +28,8 @@ const Register = () => {
     setError('');
 
     try {
-      // Backend API call for registration
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      // Backend API call for registration via environment-configured API service
+      const response = await registerUser({
         name: formData.fullName,
         email: formData.email,
         password: formData.password

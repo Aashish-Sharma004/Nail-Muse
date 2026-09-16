@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
-import axios from 'axios';
+import { createBooking } from '../../services/api';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -46,8 +46,8 @@ const Checkout = () => {
         totalAmount: total
       };
 
-      // Save booking to backend database
-      await axios.post('http://localhost:5000/api/bookings/create', bookingPayload);
+      // Save booking to backend database via environment-configured API service
+      await createBooking(bookingPayload);
 
       // Navigate to confirmation page
       navigate('/booking/confirmation');

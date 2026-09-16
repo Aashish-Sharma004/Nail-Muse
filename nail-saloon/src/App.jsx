@@ -18,6 +18,8 @@ import Checkout from './pages/Booking/Checkout';
 import Confirmation from './pages/Booking/Confirmation';
 import LiveTracker from './pages/Dashboard/LiveTracker';
 import Appointments from './pages/Dashboard/Appointments';
+import Dashboard from './pages/Dashboard/Dashboard';
+import AdminPanel from './pages/Admin/AdminPanel';
 import ScrollToTop from './components/common/ScrollToTop';
 import About from './pages/About/About';
 import Contact from './pages/Contact/Contact';
@@ -34,6 +36,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/account" element={<MyAccount />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<AdminPanel />} />
             <Route path="/services" element={<ServiceList />} />
             <Route path="/booking/tracker" element={<LiveTracker />} />
             <Route path="/rewards" element={<LoyaltyRewards />} />

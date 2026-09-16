@@ -16,11 +16,11 @@ router.post('/register', async (req, res) => {
     if (user) return res.status(400).json({ message: 'User already exists with this email' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    user = new User({ name, email: cleanEmail, password: hashedPassword });
+    user = new User({ name, email: cleanEmail, password: hashedPassword, role: 'user' });
     await user.save();
 
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { name: user.name, email: user.email } });
+    const token = jwt.sign({ id: user._id, email: user.email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { name: user.name, email: user.email, role: 'user' } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -34,6 +34,32 @@ router.post('/login', async (req, res) => {
     // Clean and normalize email input
     const cleanEmail = email ? email.trim().toLowerCase() : '';
 
+    // Dedicated Admin Credentials Check
+    if (cleanEmail === 'admin123@gmail.com' && password === 'admin123') {
+      let admin = await User.findOne({ email: 'admin123@gmail.com' });
+      if (!admin) {
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        admin = new User({
+          name: 'Salon Administrator',
+          email: 'admin123@gmail.com',
+          password: hashedPassword,
+          role: 'admin',
+          loyaltyPoints: 9999,
+          tier: 'Admin Executive'
+        });
+        await admin.save();
+      } else if (admin.role !== 'admin') {
+        admin.role = 'admin';
+        await admin.save();
+      }
+
+      const token = jwt.sign({ id: admin._id, email: admin.email, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ 
+        token, 
+        user: { name: admin.name || 'Salon Administrator', email: admin.email, role: 'admin' } 
+      });
+    }
+
     // Find user by normalized email
     const user = await User.findOne({ email: cleanEmail });
     if (!user) {
@@ -46,8 +72,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { name: user.name, email: user.email } });
+    const role = user.role || 'user';
+    const token = jwt.sign({ id: user._id, email: user.email, role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { name: user.name, email: user.email, role } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
