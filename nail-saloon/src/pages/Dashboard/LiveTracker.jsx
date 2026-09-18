@@ -240,7 +240,7 @@ const LiveTracker = () => {
 
       {/* ── Active User In-Service Notification Banner ── */}
       {isCurrentlyServingUser && (
-        <div className="mb-6 p-5 rounded-3xl bg-gradient-to-r from-emerald-800 to-emerald-950 text-white shadow-lg flex items-center justify-between gap-4 border border-emerald-600/40 animate-pulse">
+        <div className="mb-6 p-5 rounded-3xl bg-linear-to-r from-emerald-800 to-emerald-950 text-white shadow-lg flex items-center justify-between gap-4 border border-emerald-600/40 animate-pulse">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
               <Sparkles size={24} className="text-amber-300" />
@@ -285,7 +285,7 @@ const LiveTracker = () => {
 
       {/* ── Main Dark Live Status Card ── */}
       {queue?.queueEnabled && (
-        <div className="bg-gradient-to-br from-[#2B1E16] via-[#38271d] to-[#2B1E16] text-[#FAF8F5] rounded-3xl p-6 md:p-8 shadow-xl mb-8 relative overflow-hidden border border-white/10">
+        <div className="bg-linear-to-br from-[#2B1E16] via-[#38271d] to-[#2B1E16] text-[#FAF8F5] rounded-3xl p-6 md:p-8 shadow-xl mb-8 relative overflow-hidden border border-white/10">
           
           {/* Subtle Ambient Backdrops */}
           <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-[#d4956b]/15 blur-3xl pointer-events-none" />

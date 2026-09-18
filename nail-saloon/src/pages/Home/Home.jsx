@@ -10,11 +10,10 @@ import {
   Clock,
   Gem,
   Star,
-  ChevronDown,
   ArrowRight,
   Heart,
   Crown,
-  FlameKindling,
+  
 } from 'lucide-react';
 
 const Home = () => {

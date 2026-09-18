@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminOverview from '../../components/dashboard/AdminOverview';
@@ -121,48 +121,60 @@ const Dashboard = () => {
     setTimeout(() => setNotification(null), 3500);
   };
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // 1. Try to fetch all bookings from backend
-      const bookingsRes = await getAllBookings().catch(() => null);
-      if (bookingsRes && bookingsRes.data && bookingsRes.data.length > 0) {
-        setBookings(bookingsRes.data);
-      } else {
-        // Keep fallback data if backend is empty
-        setBookings(DEFAULT_DEMO_BOOKINGS);
-      }
+  // Fetch dashboard data cleanly without cascading renders
+  useEffect(() => {
+    let isMounted = true;
 
-      // 2. Try to fetch stats
-      const statsRes = await getBookingStats().catch(() => null);
-      if (statsRes && statsRes.data) {
-        setStats(statsRes.data);
-      }
-
-      // 3. Try to fetch current user's bookings
-      if (currentUser?.email) {
-        const userRes = await getUserBookings(currentUser.email).catch(() => null);
-        if (userRes && userRes.data && userRes.data.length > 0) {
-          setUserBookings(userRes.data);
+    const loadDashboardData = async () => {
+      try {
+        // 1. Try to fetch all bookings from backend
+        const bookingsRes = await getAllBookings().catch(() => null);
+        if (!isMounted) return;
+        const remoteBookings = Array.isArray(bookingsRes?.data) ? bookingsRes.data : [];
+        if (remoteBookings.length > 0) {
+          setBookings(remoteBookings);
         } else {
-          // Filter demo bookings matching or provide sample user bookings
-          const matched = (bookingsRes?.data || DEFAULT_DEMO_BOOKINGS).filter(
-            b => b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase()
-          );
-          setUserBookings(matched.length > 0 ? matched : [DEFAULT_DEMO_BOOKINGS[0], DEFAULT_DEMO_BOOKINGS[4]]);
+          // Keep fallback data if backend is empty
+          setBookings(DEFAULT_DEMO_BOOKINGS);
+        }
+
+        // 2. Try to fetch stats
+        const statsRes = await getBookingStats().catch(() => null);
+        if (!isMounted) return;
+        if (statsRes?.data) {
+          setStats(statsRes.data);
+        }
+
+        // 3. Try to fetch current user's bookings
+        if (currentUser?.email) {
+          const userRes = await getUserBookings(currentUser.email).catch(() => null);
+          if (!isMounted) return;
+          const remoteUserBookings = Array.isArray(userRes?.data) ? userRes.data : [];
+          if (remoteUserBookings.length > 0) {
+            setUserBookings(remoteUserBookings);
+          } else {
+            // Only show bookings belonging to the signed-in user.
+            const matched = (remoteBookings.length > 0 ? remoteBookings : DEFAULT_DEMO_BOOKINGS).filter(
+              b => b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase()
+            );
+            setUserBookings(matched);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend unavailable, running in enhanced demo mode:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
-    } catch (err) {
-      console.warn('Backend unavailable, running in enhanced demo mode:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser?.email]);
+    };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    loadDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.email]);
 
   // Handle status update
   const handleStatusChange = async (bookingId, newStatus) => {
