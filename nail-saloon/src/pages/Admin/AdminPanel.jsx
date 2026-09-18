@@ -5,6 +5,8 @@ import AppointmentsTable from '../../components/dashboard/AppointmentsTable';
 import ServicesManager from '../../components/admin/ServicesManager';
 import AnnouncementEditor from '../../components/admin/AnnouncementEditor';
 import ClientsManager from '../../components/admin/ClientsManager';
+import QueueManager from '../../components/admin/QueueManager';
+import OffersManager from '../../components/admin/OffersManager';
 import NewBookingModal from '../../components/dashboard/NewBookingModal';
 import {
   getAllBookings,
@@ -39,10 +41,16 @@ const AdminPanel = () => {
   // Modal & Toast
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [selectedOfferClient, setSelectedOfferClient] = useState('');
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleOpenOfferComposer = (email = '') => {
+    setSelectedOfferClient(email);
+    setActiveSection('offers');
   };
 
   // Fetch all administrative data
@@ -192,11 +200,13 @@ const AdminPanel = () => {
 
   // Navigation Items
   const navItems = [
-    { id: 'pulse', label: 'Studio Pulse', icon: '📊', desc: 'KPIs & Revenue Overview' },
-    { id: 'appointments', label: `Appointments (${bookings.length})`, icon: '📅', desc: 'Manage salon visits' },
-    { id: 'services', label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
-    { id: 'announcements', label: 'Site Announcements', icon: '📢', desc: 'Web app banner & promo code' },
-    { id: 'clients', label: `VIP Clients (${users.length})`, icon: '👥', desc: 'Customer loyalty & tiers' }
+    { id: 'pulse',         label: 'Studio Pulse',                    icon: '📊', desc: 'KPIs & Revenue Overview' },
+    { id: 'queue',         label: 'Live Queue',                      icon: '📡', desc: 'Real-time queue control' },
+    { id: 'appointments',  label: `Appointments (${bookings.length})`, icon: '📅', desc: 'Manage salon visits' },
+    { id: 'services',      label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
+    { id: 'announcements', label: 'Site Announcements',              icon: '📢', desc: 'Web app banner & promo code' },
+    { id: 'offers',        label: 'Email Offers & Blasts',           icon: '💌', desc: 'Direct client email promos' },
+    { id: 'clients',       label: `VIP Clients (${users.length})`,   icon: '👥', desc: 'Customer loyalty & tiers' }
   ];
 
   const totalRevenue = stats?.totalRevenue ?? bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -385,6 +395,45 @@ const AdminPanel = () => {
 
                   {/* Right 1 Col: Live Site Configuration Card */}
                   <div className="space-y-6">
+                    {/* Queue Status Quick Card */}
+                    <div className="bg-white border border-[#F0EBE1] rounded-3xl p-6 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-serif text-lg font-semibold text-[#2B1E16]">Live Queue</h4>
+                        <span className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                          settings?.queueEnabled
+                            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                            : 'bg-gray-100 border border-gray-200 text-gray-600'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${settings?.queueEnabled ? 'bg-emerald-600 animate-pulse' : 'bg-gray-400'}`}></span>
+                          {settings?.queueEnabled ? 'Active' : 'Paused'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#4A3B32] mb-4">Real-time client tracker</p>
+
+                      <div className="space-y-3 text-xs">
+                        <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#F0EBE1]">
+                          <span className="text-[10px] uppercase tracking-wider text-[#4A3B32] font-semibold block mb-1">Currently Serving:</span>
+                          <p className="font-medium text-[#2B1E16]">
+                            {settings?.currentlyServingSlot
+                              ? `${settings.currentlyServingSlot}${settings.currentlyServingName ? ` · ${settings.currentlyServingName}` : ''}`
+                              : 'Not set'}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#F0EBE1]">
+                          <span className="text-[10px] uppercase tracking-wider text-[#4A3B32] font-semibold block mb-1">Est. Wait / Status:</span>
+                          <p className="font-bold text-[#2B1E16]">
+                            {settings?.estimatedWaitMinutes ?? 0}m · {settings?.queueStatus ?? 'On Schedule'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setActiveSection('queue')}
+                          className="w-full py-2.5 bg-[#2B1E16] text-[#FAF8F5] rounded-xl font-medium hover:bg-[#4A3B32] transition-colors cursor-pointer text-center block"
+                        >
+                          Manage Live Queue &rarr;
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="bg-white border border-[#F0EBE1] rounded-3xl p-6 shadow-sm">
                       <h4 className="font-serif text-lg font-semibold text-[#2B1E16] mb-1">Web App Status</h4>
                       <p className="text-xs text-[#4A3B32] mb-4">Current public broadcast</p>
@@ -412,6 +461,18 @@ const AdminPanel = () => {
                         </button>
                       </div>
                     </div>
+
+                    <div className="bg-gradient-to-br from-[#2B1E16] to-[#3d2a1e] text-[#FAF8F5] rounded-3xl p-6 shadow-sm">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Email Marketing</span>
+                      <h4 className="font-serif text-lg font-semibold text-white mt-1 mb-1">Direct Client Offers</h4>
+                      <p className="text-xs text-white/75 mb-4">Send promo vouchers & custom email blasts directly to customers</p>
+                      <button
+                        onClick={() => handleOpenOfferComposer()}
+                        className="w-full py-2.5 bg-amber-400 text-[#2B1E16] rounded-xl text-xs font-bold hover:bg-amber-300 transition-colors cursor-pointer text-center block shadow-md"
+                      >
+                        Compose Client Offer &rarr;
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -419,7 +480,20 @@ const AdminPanel = () => {
               </div>
             )}
 
-            {/* 2. Appointments Manager */}
+            {/* 2. Live Queue Manager */}
+            {activeSection === 'queue' && (
+              <div className="animate-fade-in">
+                <QueueManager
+                  settings={settings}
+                  onSaveSettings={handleSaveSettings}
+                  bookings={bookings}
+                  onStatusChange={handleStatusChange}
+                  showToast={showToast}
+                />
+              </div>
+            )}
+
+            {/* 3. Appointments Manager */}
             {activeSection === 'appointments' && (
               <AppointmentsTable
                 bookings={bookings}
@@ -447,11 +521,21 @@ const AdminPanel = () => {
               />
             )}
 
-            {/* 5. Clients & VIP Club */}
+            {/* 5. Direct Email Offers & Campaigns */}
+            {activeSection === 'offers' && (
+              <OffersManager
+                users={users}
+                initialTargetEmail={selectedOfferClient}
+                showToast={showToast}
+              />
+            )}
+
+            {/* 6. Clients & VIP Club */}
             {activeSection === 'clients' && (
               <ClientsManager
                 users={users}
                 onUpdateLoyalty={handleUpdateLoyalty}
+                onSendOffer={handleOpenOfferComposer}
               />
             )}
 

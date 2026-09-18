@@ -13,7 +13,7 @@ const ServicesManager = ({ services, onAddService, onUpdateService, onDeleteServ
     category: 'Essentials',
     price: '$50',
     duration: '45 mins',
-    image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80',
     description: '',
     isAvailable: true
   };
@@ -117,7 +117,10 @@ const ServicesManager = ({ services, onAddService, onUpdateService, onDeleteServ
                   <img
                     src={service.image}
                     alt={service.title}
-                    onError={(e) => { e.target.src = 'https://placehold.co/600x400/FAF8F5/2B1E16?text=NailMuse'; }}
+                    onError={(e) => { 
+                      e.target.onerror = null; 
+                      e.target.src = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80'; 
+                    }}
                     className="w-full h-full object-cover"
                   />
                   <span className="absolute top-3 left-3 bg-[#FAF8F5]/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[10px] font-bold text-[#2B1E16] uppercase tracking-wider">

@@ -296,7 +296,7 @@ const MyAccount = () => {
                 {/* Interactive Action Buttons */}
                 <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/15">
                   <button 
-                    onClick={() => navigate('/booking/tracker')}
+                    onClick={() => navigate('/booking/tracker', { state: { booking: activeBooking } })}
                     className="px-5 py-2.5 bg-amber-400 text-[#2B1E16] text-xs font-bold rounded-xl hover:bg-amber-300 transition-all shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     <span>🕒</span> Track Live Queue
@@ -404,7 +404,7 @@ const MyAccount = () => {
                           {isActive && (
                             <>
                               <button
-                                onClick={() => navigate('/booking/tracker')}
+                                onClick={() => navigate('/booking/tracker', { state: { booking: item } })}
                                 className="px-3 py-1 bg-[#2B1E16] text-[#FAF8F5] text-xs rounded-lg font-medium hover:bg-[#4A3B32] transition-colors cursor-pointer"
                               >
                                 Live 🕒

@@ -1,1 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Libre+Baskerville:ital,wght@0,400..700;1,400..700&family=Smooch+Sans:wght@100..900&display=swap');
 @import "tailwindcss";
+
+/* ── Global typography defaults ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Josefin Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Libre Baskerville', serif;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+p {
+  line-height: 1.68;
+}
+
+/* Utility class for Smooch Sans accent text */
+.font-accent { font-family: 'Smooch Sans', sans-serif; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #FAF8F5; }
+::-webkit-scrollbar-thumb { background: #C8A98A; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #8B5E3C; }
+
+/* ── Hide scrollbar utility ── */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

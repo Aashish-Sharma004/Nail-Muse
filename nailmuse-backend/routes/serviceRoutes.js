@@ -8,7 +8,7 @@ const INITIAL_SERVICES = [
     category: 'Essentials',
     price: '$45+',
     duration: '45 mins',
-    image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80',
     description: 'A meticulous detailing of nails and cuticles, followed by a hydrating hand massage and finished with a flawless polish application.'
   },
   {
@@ -16,7 +16,7 @@ const INITIAL_SERVICES = [
     category: 'Essentials',
     price: '$65+',
     duration: '60 mins',
-    image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059e98b?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80',
     description: 'Relax with a soothing foot soak, complete callus treatment, exfoliating scrub, extended lower leg massage, and perfect polish.'
   },
   {
@@ -24,7 +24,7 @@ const INITIAL_SERVICES = [
     category: 'Essentials',
     price: '$55+',
     duration: '50 mins',
-    image: 'https://images.unsplash.com/photo-1516975080661-46bd8a25c386?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=800&q=80',
     description: 'Enjoy long-lasting, chip-resistant color for up to two weeks. Includes full cuticle care and precise gel application.'
   },
   {
@@ -32,7 +32,7 @@ const INITIAL_SERVICES = [
     category: 'Enhancements',
     price: '$85+',
     duration: '90 mins',
-    image: 'https://images.unsplash.com/photo-1595868846142-f254dc5947a5?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80',
     description: 'Flawless, lightweight extensions using Apres Gel-X. Causes zero damage to natural nails while providing perfect shape and length.'
   },
   {
@@ -40,7 +40,7 @@ const INITIAL_SERVICES = [
     category: 'Enhancements',
     price: '$75+',
     duration: '90 mins',
-    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1607779097040-26e80aa78e66?auto=format&fit=crop&w=800&q=80',
     description: 'Classic acrylic enhancements sculpted to perfection. Includes your choice of shape, length, and a standard gel polish finish.'
   },
   {
@@ -48,7 +48,7 @@ const INITIAL_SERVICES = [
     category: 'Enhancements',
     price: '$60+',
     duration: '60 mins',
-    image: 'https://images.unsplash.com/photo-1502821614763-71887e594dfc?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
     description: 'A durable, odor-free alternative to acrylics infused with vitamins to strengthen your natural nails.'
   },
   {
@@ -56,7 +56,7 @@ const INITIAL_SERVICES = [
     category: 'Nail Art',
     price: '$15+',
     duration: '15 mins',
-    image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&w=800&q=80',
     description: 'Subtle and chic. Add French tips, negative space designs, dots, or delicate lines to any base service.'
   },
   {
@@ -64,7 +64,7 @@ const INITIAL_SERVICES = [
     category: 'Nail Art',
     price: '$35+',
     duration: '30 mins',
-    image: 'https://images.unsplash.com/photo-1629237699923-281b3793f773?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=800&q=80',
     description: 'Elevate your set with intricate 3D sculpting, Swarovski crystals, chrome powders, or hand-painted murals.'
   },
   {
@@ -72,7 +72,7 @@ const INITIAL_SERVICES = [
     category: 'Treatments',
     price: '$20',
     duration: '15 mins',
-    image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80',
     description: 'A penetrating toughening agent that fuses together the nails top layers to improve nail plate integrity.'
   },
   {
@@ -80,7 +80,7 @@ const INITIAL_SERVICES = [
     category: 'Treatments',
     price: '$15',
     duration: '15 mins',
-    image: 'https://images.unsplash.com/photo-1512496015851-a1dcaf768b55?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&w=800&q=80',
     description: 'Intense moisture therapy for hands or feet. Relieves joint stiffness while leaving skin silky smooth.'
   },
   {
@@ -88,7 +88,7 @@ const INITIAL_SERVICES = [
     category: 'Essentials',
     price: '$25',
     duration: '20 mins',
-    image: 'https://images.unsplash.com/photo-1502821946029-798154cb8007?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=800&q=80',
     description: 'In a rush? Quick removal of old standard polish, light shaping, and a fresh coat of lacquer.'
   },
   {
@@ -96,7 +96,7 @@ const INITIAL_SERVICES = [
     category: 'Essentials',
     price: '$40',
     duration: '35 mins',
-    image: 'https://images.unsplash.com/photo-1512413914564-162629b3524b?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
     description: 'Detailed cuticle care, precise shaping, buffing to a natural shine, and a tension-relief hand massage.'
   }
 ];
@@ -127,7 +127,7 @@ router.post('/', async (req, res) => {
       category,
       price,
       duration: duration || '45 mins',
-      image: image || 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=600&q=80',
+      image: image || 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80',
       description: description || '',
       isAvailable: true
     });

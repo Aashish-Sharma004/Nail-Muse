@@ -48,4 +48,13 @@ export const updateSalonSettings = (settingsData) => API.put('/settings', settin
 export const getAllUsers = () => API.get('/users');
 export const updateUserLoyalty = (id, loyaltyData) => API.patch(`/users/${id}/loyalty`, loyaltyData);
 
+// Live Queue endpoints (backed by the same /settings document)
+export const getQueueStatus = () => API.get('/settings');
+export const updateQueueStatus = (queueData) => API.put('/settings', queueData);
+
+// Direct Email Offers & Campaigns endpoints
+export const sendCustomerOffer = (offerData) => API.post('/offers/send', offerData);
+export const getOfferCampaigns = () => API.get('/offers');
+export const deleteOfferCampaign = (id) => API.delete(`/offers/${id}`);
+
 export default API;

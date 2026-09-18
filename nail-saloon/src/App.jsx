@@ -40,6 +40,7 @@ function App() {
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/services" element={<ServiceList />} />
             <Route path="/booking/tracker" element={<LiveTracker />} />
+            <Route path="/tracker" element={<LiveTracker />} />
             <Route path="/rewards" element={<LoyaltyRewards />} />
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/about" element={<About />} />

@@ -47,7 +47,21 @@ const Checkout = () => {
       };
 
       // Save booking to backend database via environment-configured API service
-      await createBooking(bookingPayload);
+      const res = await createBooking(bookingPayload);
+      const createdBooking = res.data?.booking || {
+        ...bookingPayload,
+        _id: 'NM-' + Date.now().toString().slice(-6)
+      };
+
+      // Persist latest confirmed booking so LiveTracker and Confirmation have full access
+      localStorage.setItem('nailmuse_latest_booking', JSON.stringify(createdBooking));
+      if (typeof updateBooking === 'function') {
+        updateBooking({
+          ...bookingData,
+          ...createdBooking,
+          confirmedBooking: createdBooking
+        });
+      }
 
       // Navigate to confirmation page
       navigate('/booking/confirmation');

@@ -1,7 +1,7 @@
 // src/components/admin/ClientsManager.jsx
 import React, { useState } from 'react';
 
-const ClientsManager = ({ users, onUpdateLoyalty }) => {
+const ClientsManager = ({ users, onUpdateLoyalty, onSendOffer }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [pointsDelta, setPointsDelta] = useState(50);
@@ -112,12 +112,23 @@ const ClientsManager = ({ users, onUpdateLoyalty }) => {
                     </td>
 
                     <td className="py-4 px-5 text-right">
-                      <button
-                        onClick={() => openAdjustModal(user)}
-                        className="text-xs bg-[#2B1E16] text-[#FAF8F5] px-3 py-1.5 rounded-lg font-medium hover:bg-[#4A3B32] transition-colors shadow-2xs cursor-pointer"
-                      >
-                        Adjust Perks
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {onSendOffer && (
+                          <button
+                            onClick={() => onSendOffer(user.email)}
+                            className="text-xs bg-[#FAF8F5] border border-[#EDE5D8] hover:border-[#2B1E16] text-[#2B1E16] px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                            title={`Send direct email offer to ${user.email}`}
+                          >
+                            <span>✉️</span> Offer
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openAdjustModal(user)}
+                          className="text-xs bg-[#2B1E16] text-[#FAF8F5] px-3 py-1.5 rounded-lg font-medium hover:bg-[#4A3B32] transition-colors shadow-2xs cursor-pointer"
+                        >
+                          Adjust Perks
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
