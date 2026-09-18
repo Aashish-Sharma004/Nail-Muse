@@ -299,11 +299,7 @@ const Home = () => {
             Welcome to NailMuse Studio — where luxury meets artistry.
             Explore our services, meet our artists, and read what our clients say.
           </p>
-          <div className="nm-hero-actions">
-            <a href="#nm-services" className="nm-btn-primary">
-              Explore Services <ChevronDown size={18} />
-            </a>
-          </div>
+          
         </div>
 
         {/* Stats bar */}

@@ -1,19 +1,41 @@
 const router = require('express').Router();
 const Booking = require('../models/Booking');
+const User = require('../models/User');
 
 router.post('/create', async (req, res) => {
   try {
-    let { userEmail, serviceTitle, technicianName, date, time, totalAmount, notes } = req.body;
+    let {
+      userEmail,
+      serviceTitle,
+      technicianName,
+      date,
+      time,
+      basePrice,
+      addons,
+      serviceFee,
+      discount,
+      couponCode,
+      paymentMethod,
+      totalAmount,
+      notes
+    } = req.body;
     
     // Clean and lowercase email to prevent mismatch
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : '';
 
     const newBooking = new Booking({
       userEmail: cleanEmail,
-      serviceTitle,
-      technicianName,
-      date,
-      time,
+      serviceTitle: serviceTitle || 'Signature Service',
+      technicianName: technicianName || 'Assigned Specialist',
+      date: date || new Date().toLocaleDateString(),
+      time: time || '10:00 AM',
+      basePrice: Number(basePrice) || 0,
+      addons: Array.isArray(addons) ? addons : [],
+      serviceFee: Number(serviceFee) || 3.50,
+      discount: Number(discount) || 0,
+      couponCode: couponCode || '',
+      paymentMethod: paymentMethod || 'Pay in Studio',
+      paymentStatus: paymentMethod === 'Card' || paymentMethod === 'UPI' ? 'Paid' : 'Pay at Salon',
       totalAmount: Number(totalAmount) || 0,
       notes: notes || '',
       status: 'Confirmed'
@@ -100,7 +122,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Update booking status
+// Update booking status (with automatic reward points on completion)
 router.patch('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
@@ -110,17 +132,61 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
+    const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(400).json({ error: 'Booking not found' });
+      return res.status(404).json({ error: 'Booking not found' });
     }
 
-    res.json({ message: 'Status updated successfully', booking });
+    booking.status = status;
+    let pointsAwarded = 0;
+    let updatedUser = null;
+
+    // Automatically award reward points when service is Completed
+    if (status === 'Completed' && !booking.pointsAwarded) {
+      // 1 reward point per $1 spent, minimum 50 points
+      pointsAwarded = Math.max(50, Math.round(Number(booking.totalAmount) || 50));
+      
+      const cleanEmail = booking.userEmail ? booking.userEmail.trim().toLowerCase() : '';
+      const user = await User.findOne({ email: cleanEmail });
+      
+      if (user) {
+        user.loyaltyPoints = (user.loyaltyPoints || 0) + pointsAwarded;
+        
+        // Dynamic Tier Progression based on total loyalty points
+        if (user.loyaltyPoints >= 1200) {
+          user.tier = 'Diamond Sanctuary VIP';
+        } else if (user.loyaltyPoints >= 700) {
+          user.tier = 'Platinum Elite Member';
+        } else if (user.loyaltyPoints >= 300) {
+          user.tier = 'Gold VIP Member';
+        } else {
+          user.tier = 'Silver Member';
+        }
+        
+        await user.save();
+        updatedUser = {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          loyaltyPoints: user.loyaltyPoints,
+          tier: user.tier
+        };
+      }
+
+      booking.pointsAwarded = true;
+      booking.rewardPointsEarned = pointsAwarded;
+    }
+
+    await booking.save();
+
+    res.json({ 
+      message: pointsAwarded > 0 
+        ? `Service marked Completed! ${pointsAwarded} reward points automatically awarded to customer.` 
+        : 'Status updated successfully', 
+      booking,
+      pointsAwarded,
+      user: updatedUser
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

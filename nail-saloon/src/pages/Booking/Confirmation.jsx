@@ -95,6 +95,21 @@ const Confirmation = () => {
               </div>
             </div>
           </div>
+
+          {/* Real Cost & Addons Summary Line */}
+          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EDE5D8] flex items-center justify-between text-xs">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-[#6B5344]">Total Confirmed Amount</p>
+              <p className="font-serif font-bold text-base text-[#2B1E16]">
+                ${booking?.totalAmount !== undefined ? Number(booking.totalAmount).toFixed(2) : '55.00'}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase font-bold bg-[#2B1E16] text-[#FAF8F5] px-2.5 py-1 rounded-full">
+                {booking?.paymentMethod || 'Pay in Studio'}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 leading-relaxed flex items-start gap-2.5">

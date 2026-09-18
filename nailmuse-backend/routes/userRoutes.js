@@ -8,13 +8,31 @@ router.get('/', async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
     
-    // Attach booking stats per user
+    // Attach booking stats and segmentation metrics per user
     const usersWithStats = await Promise.all(
       users.map(async (u) => {
-        const bookingCount = await Booking.countDocuments({ userEmail: u.email });
+        const userBookings = await Booking.find({ userEmail: u.email });
+        const bookingCount = userBookings.length;
+        const completedBookings = userBookings.filter(b => b.status === 'Completed').length;
+        const totalSpent = userBookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+        
+        // Is new customer: registered in last 14 days OR has <= 1 booking
+        const userCreatedAt = u.createdAt ? new Date(u.createdAt).getTime() : Date.now();
+        const daysSinceJoined = (Date.now() - userCreatedAt) / (1000 * 60 * 60 * 24);
+        const isNewCustomer = daysSinceJoined <= 14 || bookingCount <= 1;
+
+        // Is VIP / Regular: 2+ visits OR 500+ loyalty points OR VIP/Elite/Diamond tier
+        const isVipOrRegular = bookingCount >= 2 || (u.loyaltyPoints || 0) >= 500 || 
+          (u.tier && (u.tier.includes('VIP') || u.tier.includes('Elite') || u.tier.includes('Diamond')));
+
         return {
           ...u.toObject(),
-          bookingCount
+          bookingCount,
+          completedBookings,
+          totalSpent,
+          daysSinceJoined: Math.floor(daysSinceJoined),
+          isNewCustomer,
+          isVipOrRegular
         };
       })
     );

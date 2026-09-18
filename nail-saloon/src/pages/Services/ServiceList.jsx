@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getServices } from '../../services/api';
+import { useBooking } from '../../context/BookingContext';
 import { Search, Clock, ArrowRight } from 'lucide-react';
 
 // Fallback initial services if backend is initializing
@@ -71,6 +72,7 @@ const categories = ['All', 'Essentials', 'Enhancements', 'Nail Art', 'Treatments
 
 const ServiceList = () => {
   const navigate = useNavigate();
+  const { updateBooking } = useBooking();
   const [services, setServices] = useState(fallbackServiceData);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,8 +183,11 @@ const ServiceList = () => {
                     {service.duration}
                   </div>
                   <button 
-                    onClick={() => navigate('/booking/technician')}
-                    className="flex items-center gap-1.5 bg-[#2B1E16] text-[#FAF8F5] px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#4A3B32] transition-colors shadow-sm"
+                    onClick={() => {
+                      updateBooking({ service });
+                      navigate('/booking/technician');
+                    }}
+                    className="flex items-center gap-1.5 bg-[#2B1E16] text-[#FAF8F5] px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#4A3B32] transition-colors shadow-sm cursor-pointer"
                   >
                     Book Now <ArrowRight size={15} />
                   </button>

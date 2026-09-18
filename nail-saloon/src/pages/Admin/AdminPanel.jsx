@@ -8,6 +8,7 @@ import AnnouncementEditor from '../../components/admin/AnnouncementEditor';
 import ClientsManager from '../../components/admin/ClientsManager';
 import QueueManager from '../../components/admin/QueueManager';
 import OffersManager from '../../components/admin/OffersManager';
+import TechniciansManager from '../../components/admin/TechniciansManager';
 import NewBookingModal from '../../components/dashboard/NewBookingModal';
 import {
   getAllBookings,
@@ -22,7 +23,12 @@ import {
   getSalonSettings,
   updateSalonSettings,
   getAllUsers,
-  updateUserLoyalty
+  updateUserLoyalty,
+  getTechnicians,
+  createTechnician,
+  updateTechnician,
+  deleteTechnician,
+  toggleTechnicianAvailability
 } from '../../services/api';
 
 const AdminPanel = () => {
@@ -38,6 +44,7 @@ const AdminPanel = () => {
   const [services, setServices] = useState([]);
   const [settings, setSettings] = useState(null);
   const [users, setUsers] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal & Toast
@@ -59,12 +66,13 @@ const AdminPanel = () => {
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [bookingsRes, statsRes, servicesRes, settingsRes, usersRes] = await Promise.allSettled([
+      const [bookingsRes, statsRes, servicesRes, settingsRes, usersRes, techsRes] = await Promise.allSettled([
         getAllBookings(),
         getBookingStats(),
         getServices(),
         getSalonSettings(),
-        getAllUsers()
+        getAllUsers(),
+        getTechnicians()
       ]);
 
       if (bookingsRes.status === 'fulfilled') setBookings(bookingsRes.value.data || []);
@@ -72,6 +80,7 @@ const AdminPanel = () => {
       if (servicesRes.status === 'fulfilled') setServices(servicesRes.value.data || []);
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data || null);
       if (usersRes.status === 'fulfilled') setUsers(usersRes.value.data || []);
+      if (techsRes.status === 'fulfilled') setTechnicians(techsRes.value.data || []);
     } catch (err) {
       console.warn('Admin data fetch warning:', err);
     } finally {
@@ -100,8 +109,13 @@ const AdminPanel = () => {
   const handleStatusChange = async (bookingId, newStatus) => {
     setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, status: newStatus } : b));
     try {
-      await updateBookingStatus(bookingId, newStatus);
-      showToast(`Appointment status updated to ${newStatus}`);
+      const res = await updateBookingStatus(bookingId, newStatus);
+      if (res.data?.pointsAwarded && res.data.pointsAwarded > 0) {
+        showToast(`✨ Service Completed! ${res.data.pointsAwarded} reward points automatically credited to ${res.data.user?.name || 'client'}.`);
+        loadAllData(); // Reload customers list to reflect updated loyalty points & tier immediately!
+      } else {
+        showToast(`Appointment status updated to ${newStatus}`);
+      }
     } catch (err) {
       console.error(err);
       showToast('Status updated locally');
@@ -191,11 +205,64 @@ const AdminPanel = () => {
     }
   };
 
+  // Technicians handlers (Add, Edit, Remove, Duty Control)
+  const handleAddTechnician = async (techData) => {
+    try {
+      const res = await createTechnician(techData);
+      if (res.data) {
+        setTechnicians(prev => [res.data, ...prev]);
+        showToast(`Artist "${res.data.name}" added to salon roster!`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to add technician');
+    }
+  };
+
+  const handleUpdateTechnician = async (techId, techData) => {
+    try {
+      const res = await updateTechnician(techId, techData);
+      if (res.data) {
+        setTechnicians(prev => prev.map(t => (t._id === techId || t.id === techId) ? res.data : t));
+        showToast(`Artist "${res.data.name}" updated successfully!`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to update technician');
+    }
+  };
+
+  const handleDeleteTechnician = async (techId) => {
+    try {
+      await deleteTechnician(techId);
+      setTechnicians(prev => prev.filter(t => (t._id !== techId && t.id !== techId)));
+      showToast('Artist removed from salon roster');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete technician');
+    }
+  };
+
+  const handleToggleTechnicianAvailability = async (techId) => {
+    try {
+      const res = await toggleTechnicianAvailability(techId);
+      if (res.data) {
+        setTechnicians(prev => prev.map(t => (t._id === techId || t.id === techId) ? res.data : t));
+        showToast(`Artist "${res.data.name}" is now ${res.data.available ? 'On Duty' : 'Off Duty'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Optimistic update
+      setTechnicians(prev => prev.map(t => (t._id === techId || t.id === techId) ? { ...t, available: !t.available } : t));
+    }
+  };
+
   // Navigation Items
   const navItems = [
     { id: 'pulse', label: 'Studio Pulse', icon: '📊', desc: 'KPIs & Revenue Overview' },
     { id: 'queue', label: 'Live Queue', icon: '📡', desc: 'Real-time queue control' },
     { id: 'appointments', label: `Appointments (${bookings.length})`, icon: '📅', desc: 'Manage salon visits' },
+    { id: 'technicians', label: `Artist Roster (${technicians.length})`, icon: '👩‍🎨', desc: 'Manage nail artists & duty' },
     { id: 'services', label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
     { id: 'announcements', label: 'Site Announcements', icon: '📢', desc: 'Web app banner & promo code' },
     { id: 'offers', label: 'Email Offers & Blasts', icon: '💌', desc: 'Direct client email promos' },
@@ -494,7 +561,18 @@ const AdminPanel = () => {
               />
             )}
 
-            {/* 3. Services Catalog & Pricing Editor */}
+            {/* 3.5 Technicians & Artists Roster Manager */}
+            {activeSection === 'technicians' && (
+              <TechniciansManager
+                technicians={technicians}
+                onAddTechnician={handleAddTechnician}
+                onUpdateTechnician={handleUpdateTechnician}
+                onDeleteTechnician={handleDeleteTechnician}
+                onToggleAvailability={handleToggleTechnicianAvailability}
+              />
+            )}
+
+            {/* 4. Services Catalog & Pricing Editor */}
             {activeSection === 'services' && (
               <ServicesManager
                 services={services}

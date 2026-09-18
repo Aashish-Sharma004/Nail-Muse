@@ -10,6 +10,7 @@ const serviceRoutes = require('./routes/serviceRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const userRoutes = require('./routes/userRoutes');
 const offerRoutes = require('./routes/offerRoutes');
+const technicianRoutes = require('./routes/technicianRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/offers', offerRoutes);
+app.use('/api/technicians', technicianRoutes);
 
 app.get('/', (req, res) => {
   res.send('NailMuse Studio Backend is running...');

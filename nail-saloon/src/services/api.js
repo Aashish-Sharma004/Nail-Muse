@@ -49,4 +49,11 @@ export const sendCustomerOffer = (offerData) => API.post('/offers/send', offerDa
 export const getOfferCampaigns = () => API.get('/offers');
 export const deleteOfferCampaign = (id) => API.delete(`/offers/${id}`);
 
+// Technician management endpoints (for live roster control in Admin & booking flow)
+export const getTechnicians = () => API.get('/technicians');
+export const createTechnician = (techData) => API.post('/technicians', techData);
+export const updateTechnician = (id, techData) => API.put(`/technicians/${id}`, techData);
+export const deleteTechnician = (id) => API.delete(`/technicians/${id}`);
+export const toggleTechnicianAvailability = (id) => API.patch(`/technicians/${id}/toggle-availability`);
+
 export default API;
