@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
+import { useAuth } from '../../context/AuthContext';
 import { createBooking } from '../../services/api';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { bookingData } = useBooking();
+  const { bookingData, updateBooking } = useBooking();
+  const { user, isLoggedIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,7 +22,8 @@ const Checkout = () => {
     );
   }
 
-  const total = bookingData.service.price + (bookingData.addons?.[0]?.price || 0) - (bookingData.discount || 0);
+  const subtotal = (bookingData.service.price || 0) + (bookingData.addons?.reduce((acc, a) => acc + a.price, 0) || 0);
+  const total = Math.max(0, subtotal - (bookingData.discount || 0));
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -28,13 +31,11 @@ const Checkout = () => {
     setError('');
 
     try {
-      // Get logged-in user details from localStorage
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
+      // Validate logged-in user details from global AuthContext
+      if (!isLoggedIn || !user) {
         navigate('/login');
         return;
       }
-      const user = JSON.parse(storedUser);
 
       // Prepare booking payload for MongoDB backend
       const bookingPayload = {
@@ -75,10 +76,10 @@ const Checkout = () => {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
       <button onClick={() => navigate(-1)} className="text-sm text-[#4A3B32] mb-6 hover:text-[#2B1E16]">&larr; Back</button>
-      
+
       <div className="bg-white border border-[#F0EBE1] rounded-2xl p-6 md:p-10 shadow-lg">
         <h2 className="text-3xl font-serif text-[#2B1E16] mb-6 text-center">Complete your payment</h2>
-        
+
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
             ⚠️ {error}
@@ -107,9 +108,9 @@ const Checkout = () => {
             </div>
             <span className="text-xl">🏢</span>
           </label>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             disabled={loading}
             className="w-full bg-[#2B1E16] text-[#FAF8F5] px-6 py-4 rounded-xl text-base font-semibold hover:bg-[#4A3B32] transition-all mt-6 shadow-xl disabled:opacity-50"
           >

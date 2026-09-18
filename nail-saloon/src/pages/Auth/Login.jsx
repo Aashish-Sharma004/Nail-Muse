@@ -1,10 +1,11 @@
 // src/pages/Auth/Login.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginUser } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     emailOrPhone: '',
@@ -25,16 +26,11 @@ const Login = () => {
     setError('');
 
     try {
-      // Backend login request via environment-configured API service
-      const response = await loginUser({
+      // Backend sets HttpOnly cookie; global AuthContext stores user state
+      const loggedUser = await login({
         email: formData.emailOrPhone,
         password: formData.password
       });
-
-      const loggedUser = response.data.user;
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(loggedUser));
-      localStorage.setItem('isLoggedIn', 'true');
 
       // Navigate based on role: Admin to /admin, clients to /account
       if (loggedUser?.role === 'admin' || loggedUser?.email === 'admin123@gmail.com') {
@@ -43,7 +39,12 @@ const Login = () => {
         navigate('/account');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+      const msg = err.response?.data?.message 
+        || (err.code === 'ERR_NETWORK' || err.message === 'Network Error'
+            ? 'Unable to connect to salon backend server. Please verify backend is running on port 5000.' 
+            : err.message)
+        || 'Invalid email or password. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

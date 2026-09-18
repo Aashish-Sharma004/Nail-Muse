@@ -2,23 +2,17 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogIn, LogOut, User, Settings, ChevronRight } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const storedUser = localStorage.getItem('user');
-  let currentUser = null;
-  try { currentUser = storedUser ? JSON.parse(storedUser) : null; } catch {}
+  const { user: currentUser, isLoggedIn, isAdmin, logout } = useAuth();
 
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.email === 'admin123@gmail.com';
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
     setIsMobileMenuOpen(false);
   };

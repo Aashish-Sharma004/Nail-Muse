@@ -1,10 +1,11 @@
 // src/pages/Auth/Register.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -28,22 +29,22 @@ const Register = () => {
     setError('');
 
     try {
-      // Backend API call for registration via environment-configured API service
-      const response = await registerUser({
+      // Backend sets HttpOnly cookie; global AuthContext stores user state
+      await register({
         name: formData.fullName,
         email: formData.email,
         password: formData.password
       });
 
-      // Save token and user details in localStorage
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      localStorage.setItem('isLoggedIn', 'true');
-
       // Directs the user to the account dashboard after registering
       navigate('/account'); 
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      const msg = err.response?.data?.message 
+        || (err.code === 'ERR_NETWORK' || err.message === 'Network Error'
+            ? 'Unable to connect to salon backend server. Please verify backend is running on port 5000.' 
+            : err.message)
+        || 'Registration failed. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -6,25 +6,17 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 
 const API = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Automatically sends and receives HttpOnly cookies with every request
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Automatically inject JWT token from localStorage if available
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
-
 // Authentication endpoints
 export const loginUser = (formData) => API.post('/auth/login', formData);
 export const registerUser = (formData) => API.post('/auth/register', formData);
+export const getCurrentUser = () => API.get('/auth/me');
+export const logoutUser = () => API.post('/auth/logout');
 
 // Booking endpoints
 export const createBooking = (bookingData) => API.post('/bookings/create', bookingData);

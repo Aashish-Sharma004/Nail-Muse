@@ -1,6 +1,7 @@
 // src/pages/Dashboard/LiveTracker.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBooking } from '../../context/BookingContext';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { getQueueStatus, getUserBookings } from '../../services/api';
 import {
@@ -20,6 +21,7 @@ const statusConfig = {
 
 const LiveTracker = () => {
   const { bookingData } = useBooking();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,25 +83,19 @@ const LiveTracker = () => {
     } catch {}
 
     // Priority 4: Fetch from backend for logged in user
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user?.email) {
-          getUserBookings(user.email)
-            .then(res => {
-              const bookings = res.data || [];
-              if (bookings.length > 0) {
-                // Pick most relevant active booking (In-Service or Confirmed)
-                const active = bookings.find(b => b.status === 'In-Service' || b.status === 'Confirmed') || bookings[0];
-                setActiveBooking(active);
-              }
-            })
-            .catch(() => {});
-        }
-      }
-    } catch {}
-  }, [bookingData, location.state]);
+    if (user?.email) {
+      getUserBookings(user.email)
+        .then(res => {
+          const bookings = res.data || [];
+          if (bookings.length > 0) {
+            // Pick most relevant active booking (In-Service or Confirmed)
+            const active = bookings.find(b => b.status === 'In-Service' || b.status === 'Confirmed') || bookings[0];
+            setActiveBooking(active);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [bookingData, location.state, user]);
 
   // ── 3. Fetch Queue Status from Backend ──
   const fetchQueue = useCallback(async () => {

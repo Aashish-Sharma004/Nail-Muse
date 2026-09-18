@@ -1,5 +1,5 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext'; // Import Provider
 import Layout from './components/layout/Layout';
 import Home from './pages/Home/Home';
@@ -29,32 +29,34 @@ function App() {
   return (
     <Router>
       <ScrollToTop /> {/* 👈 Yahan Router ke andar sabse upar hona chahiye */}
-      <BookingProvider> 
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/account" element={<MyAccount />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/services" element={<ServiceList />} />
-            <Route path="/booking/tracker" element={<LiveTracker />} />
-            <Route path="/tracker" element={<LiveTracker />} />
-            <Route path="/rewards" element={<LoyaltyRewards />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            
-            {/* The multi-step booking routes */}
-            <Route path="/booking/technician" element={<SelectTechnician />} />
-            <Route path="/booking/date-time" element={<SelectDateTime />} />
-            <Route path="/booking/review" element={<ReviewConfirm />} />
-            <Route path="/booking/checkout" element={<Checkout />} />
-            <Route path="/booking/confirmation" element={<Confirmation />} />
-          </Routes>
-        </Layout>
-      </BookingProvider>
+      <AuthProvider>
+        <BookingProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/account" element={<MyAccount />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/services" element={<ServiceList />} />
+              <Route path="/booking/tracker" element={<LiveTracker />} />
+              <Route path="/tracker" element={<LiveTracker />} />
+              <Route path="/rewards" element={<LoyaltyRewards />} />
+              <Route path="/appointments" element={<Appointments />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+
+              {/* The multi-step booking routes */}
+              <Route path="/booking/technician" element={<SelectTechnician />} />
+              <Route path="/booking/date-time" element={<SelectDateTime />} />
+              <Route path="/booking/review" element={<ReviewConfirm />} />
+              <Route path="/booking/checkout" element={<Checkout />} />
+              <Route path="/booking/confirmation" element={<Confirmation />} />
+            </Routes>
+          </Layout>
+        </BookingProvider>
+      </AuthProvider>
       <SupportDrawer />
     </Router>
   );

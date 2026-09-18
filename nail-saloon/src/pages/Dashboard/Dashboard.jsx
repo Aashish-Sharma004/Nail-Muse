@@ -1,18 +1,18 @@
-// src/pages/Dashboard/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import AdminOverview from '../../components/dashboard/AdminOverview';
 import AppointmentsTable from '../../components/dashboard/AppointmentsTable';
 import TechnicianRoster from '../../components/dashboard/TechnicianRoster';
 import CustomerOverview from '../../components/dashboard/CustomerOverview';
 import NewBookingModal from '../../components/dashboard/NewBookingModal';
-import { 
-  getAllBookings, 
-  getBookingStats, 
-  getUserBookings, 
-  updateBookingStatus, 
-  deleteBooking, 
-  createBooking 
+import {
+  getAllBookings,
+  getBookingStats,
+  getUserBookings,
+  updateBookingStatus,
+  deleteBooking,
+  createBooking
 } from '../../services/api';
 
 // Initial realistic luxury demo bookings if backend is empty or initializing
@@ -112,15 +112,9 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Read current user from localStorage
-  const [currentUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('user');
-      return stored ? JSON.parse(stored) : { name: 'Valued Client', email: 'guest@nailmuse.com', loyaltyPoints: 450, tier: 'Gold VIP Member' };
-    } catch {
-      return { name: 'Valued Client', email: 'guest@nailmuse.com', loyaltyPoints: 450, tier: 'Gold VIP Member' };
-    }
-  });
+  // Read current user from global AuthContext
+  const { user } = useAuth();
+  const currentUser = user || { name: 'Valued Client', email: 'guest@nailmuse.com', loyaltyPoints: 450, tier: 'Gold VIP Member' };
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -173,7 +167,7 @@ const Dashboard = () => {
   // Handle status update
   const handleStatusChange = async (bookingId, newStatus) => {
     // 1. Optimistic UI update
-    setBookings(prev => 
+    setBookings(prev =>
       prev.map(b => b._id === bookingId ? { ...b, status: newStatus } : b)
     );
     setUserBookings(prev =>
@@ -232,7 +226,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] pb-16">
-      
+
       {/* Toast Notification */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#2B1E16] text-[#FAF8F5] px-5 py-3 rounded-2xl shadow-xl border border-white/20 flex items-center gap-3 text-xs font-medium animate-bounce">
@@ -244,7 +238,7 @@ const Dashboard = () => {
       {/* Top Studio Dashboard Header */}
       <div className="border-b border-[#F0EBE1] bg-white/80 backdrop-blur-md sticky top-16 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          
+
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl md:text-3xl font-serif font-bold text-[#2B1E16]">
@@ -265,21 +259,19 @@ const Dashboard = () => {
             <div className="bg-[#FAF8F5] border border-[#F0EBE1] p-1 rounded-2xl flex items-center shadow-2xs">
               <button
                 onClick={() => handleModeSwitch('admin')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeMode === 'admin'
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeMode === 'admin'
                     ? 'bg-[#2B1E16] text-[#FAF8F5] shadow-sm'
                     : 'text-[#4A3B32] hover:text-[#2B1E16]'
-                }`}
+                  }`}
               >
                 <span>💼</span> Salon Operations
               </button>
               <button
                 onClick={() => handleModeSwitch('customer')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeMode === 'customer'
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeMode === 'customer'
                     ? 'bg-[#2B1E16] text-[#FAF8F5] shadow-sm'
                     : 'text-[#4A3B32] hover:text-[#2B1E16]'
-                }`}
+                  }`}
               >
                 <span>✨</span> Client Sanctuary
               </button>
@@ -308,11 +300,10 @@ const Dashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === tab.id
+                className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === tab.id
                     ? 'border-[#2B1E16] text-[#2B1E16] font-semibold'
                     : 'border-transparent text-[#4A3B32] hover:text-[#2B1E16] hover:border-[#F0EBE1]'
-                }`}
+                  }`}
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
@@ -324,27 +315,27 @@ const Dashboard = () => {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        
+
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-[#2B1E16] space-y-3">
             <div className="w-10 h-10 border-3 border-[#2B1E16] border-t-transparent rounded-full animate-spin"></div>
             <p className="font-serif text-lg">Synchronizing salon sanctuary...</p>
           </div>
         ) : activeMode === 'admin' ? (
-          
+
           /* Admin / Salon Operations View */
           <div>
             {activeTab === 'overview' && (
-              <AdminOverview 
-                stats={stats} 
-                bookings={bookings} 
+              <AdminOverview
+                stats={stats}
+                bookings={bookings}
                 onSelectTab={setActiveTab}
                 onOpenNewBooking={() => setIsModalOpen(true)}
               />
             )}
 
             {activeTab === 'appointments' && (
-              <AppointmentsTable 
+              <AppointmentsTable
                 bookings={bookings}
                 onStatusChange={handleStatusChange}
                 onDeleteBooking={handleDeleteBooking}
@@ -417,8 +408,8 @@ const Dashboard = () => {
         ) : (
 
           /* Customer Sanctuary View */
-          <CustomerOverview 
-            user={currentUser} 
+          <CustomerOverview
+            user={currentUser}
             userBookings={userBookings}
             onOpenNewBooking={() => setIsModalOpen(true)}
           />

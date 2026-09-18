@@ -1,21 +1,13 @@
 // src/pages/Dashboard/MyAccount.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { getUserBookings, updateBookingStatus } from '../../services/api';
 import ReviewModal from '../../components/common/ReviewModal';
 
 const MyAccount = () => {
   const navigate = useNavigate();
-  
-  // Directly initialize user from localStorage
-  const [user, setUser] = useState(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch {
-      return null;
-    }
-  });
+  const { user, isLoggedIn, loading: authLoading, logout } = useAuth();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,21 +21,17 @@ const MyAccount = () => {
   };
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    const storedUser = localStorage.getItem('user');
+    if (authLoading) return; // Wait for initial session authentication check
 
-    if (!isLoggedIn || !storedUser) {
+    if (!isLoggedIn || !user) {
       navigate('/login');
       return;
     }
 
-    const parsedUser = JSON.parse(storedUser);
-    setUser(parsedUser);
-
     // Fetch real bookings from backend for this user
     const fetchUserData = async () => {
       try {
-        const response = await getUserBookings(parsedUser.email);
+        const response = await getUserBookings(user.email);
         setBookings(response.data || []);
       } catch (err) {
         console.error('Error fetching bookings:', err);
@@ -53,12 +41,10 @@ const MyAccount = () => {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [authLoading, isLoggedIn, user, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -77,7 +63,7 @@ const MyAccount = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-[#2B1E16] font-serif text-xl">
         <div className="flex flex-col items-center gap-3">
@@ -110,7 +96,7 @@ const MyAccount = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 relative animate-fade-in">
-      
+
       {/* Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#2B1E16] text-[#FAF8F5] px-5 py-3 rounded-2xl shadow-xl border border-white/20 flex items-center gap-2 text-xs font-medium animate-bounce">
@@ -132,21 +118,21 @@ const MyAccount = () => {
             Track your appointments in real time, view queue status, and redeem membership perks.
           </p>
         </div>
-        
+
         <div className="flex flex-wrap gap-2.5">
-          <button 
+          <button
             onClick={() => setIsReviewOpen(true)}
             className="px-4 py-2.5 bg-white border border-[#F0EBE1] text-[#2B1E16] text-xs font-semibold rounded-xl hover:bg-[#FAF8F5] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <span>⭐</span> Rate Visit
           </button>
-          <button 
+          <button
             onClick={() => navigate('/services')}
             className="bg-[#2B1E16] text-[#FAF8F5] px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#4A3B32] transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <span>+</span> Book Treatment
           </button>
-          <button 
+          <button
             onClick={handleLogout}
             className="px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl hover:bg-red-100 transition-all shadow-xs cursor-pointer"
           >
@@ -157,35 +143,35 @@ const MyAccount = () => {
 
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Profile & Quick Navigation */}
         <div className="space-y-6">
-          
+
           {/* Enhanced Profile Card */}
           <div className="bg-white border border-[#F0EBE1] shadow-sm rounded-3xl overflow-hidden text-center">
             {/* Cover Image */}
             <div className="h-28 bg-[#F5EFE6] relative overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=800&q=80" 
-                alt="Cover" 
+              <img
+                src="https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=800&q=80"
+                alt="Cover"
                 className="w-full h-full object-cover opacity-80"
               />
             </div>
-            
+
             {/* Avatar */}
             <div className="w-20 h-20 mx-auto bg-[#2B1E16] text-[#FAF8F5] rounded-full flex items-center justify-center text-2xl font-serif -mt-10 mb-3 shadow-md border-4 border-white relative z-10">
               {getInitials(user?.name)}
             </div>
-            
+
             <h2 className="text-xl font-serif font-bold text-[#2B1E16] px-4">{user?.name || 'Valued Member'}</h2>
             <p className="text-xs text-[#4A3B32] px-4 truncate">{user?.email}</p>
-            
+
             <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#2B1E16] to-[#4A3B32] text-[#FAF8F5] text-[11px] font-bold rounded-full mt-2 mb-4 tracking-wider shadow-2xs">
               👑 {loyaltyTier}
             </span>
-            
+
             {/* Loyalty Tracker */}
-            <div 
+            <div
               onClick={() => navigate('/rewards')}
               className="px-6 pb-2 text-left cursor-pointer group"
             >
@@ -240,21 +226,20 @@ const MyAccount = () => {
 
         {/* Right Column: Active Booking & History */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {/* Active / Next Appointment Card */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-serif text-[#2B1E16] font-semibold">Your Next Salon Visit</h3>
               {activeBooking && (
-                <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                  activeBooking.status === 'In-Service'
+                <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${activeBooking.status === 'In-Service'
                     ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
                     : activeBooking.status === 'Completed'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : activeBooking.status === 'Cancelled'
-                    ? 'bg-rose-100 text-rose-800'
-                    : 'bg-[#F0EBE1] text-[#2B1E16]'
-                }`}>
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : activeBooking.status === 'Cancelled'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-[#F0EBE1] text-[#2B1E16]'
+                  }`}>
                   {activeBooking.status || 'Confirmed'}
                 </span>
               )}
@@ -295,14 +280,14 @@ const MyAccount = () => {
 
                 {/* Interactive Action Buttons */}
                 <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/15">
-                  <button 
+                  <button
                     onClick={() => navigate('/booking/tracker', { state: { booking: activeBooking } })}
                     className="px-5 py-2.5 bg-amber-400 text-[#2B1E16] text-xs font-bold rounded-xl hover:bg-amber-300 transition-all shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     <span>🕒</span> Track Live Queue
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => navigate('/booking/date-time')}
                     className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl border border-white/25 transition-all cursor-pointer"
                   >
@@ -310,7 +295,7 @@ const MyAccount = () => {
                   </button>
 
                   {activeBooking.status !== 'Cancelled' && activeBooking.status !== 'Completed' && (
-                    <button 
+                    <button
                       onClick={() => handleCancelBooking(activeBooking._id)}
                       className="px-4 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold rounded-xl border border-rose-400/30 transition-all cursor-pointer ml-auto"
                     >
@@ -323,7 +308,7 @@ const MyAccount = () => {
               <div className="bg-white border border-[#F0EBE1] rounded-3xl p-8 text-center shadow-sm space-y-3">
                 <p className="font-serif text-lg text-[#2B1E16]">No active appointments scheduled</p>
                 <p className="text-xs text-[#4A3B32]">Ready for a luxurious manicure or relaxing pedicure session?</p>
-                <button 
+                <button
                   onClick={() => navigate('/services')}
                   className="bg-[#2B1E16] text-[#FAF8F5] px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#4A3B32] transition-all shadow-sm cursor-pointer inline-block"
                 >
@@ -335,7 +320,7 @@ const MyAccount = () => {
 
           {/* Appointment History & Filter */}
           <div className="bg-white border border-[#F0EBE1] shadow-sm rounded-3xl p-6 md:p-8 space-y-5">
-            
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <h3 className="text-xl font-serif text-[#2B1E16] font-semibold">Visit History & Activity</h3>
@@ -348,11 +333,10 @@ const MyAccount = () => {
                   <button
                     key={st}
                     onClick={() => setFilterStatus(st)}
-                    className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                      filterStatus === st 
-                        ? 'bg-[#2B1E16] text-[#FAF8F5] font-semibold shadow-2xs' 
+                    className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${filterStatus === st
+                        ? 'bg-[#2B1E16] text-[#FAF8F5] font-semibold shadow-2xs'
                         : 'text-[#4A3B32] hover:text-[#2B1E16]'
-                    }`}
+                      }`}
                   >
                     {st}
                   </button>
@@ -373,22 +357,21 @@ const MyAccount = () => {
                   const isActive = item.status === 'Confirmed' || item.status === 'In-Service';
 
                   return (
-                    <div 
-                      key={item._id} 
+                    <div
+                      key={item._id}
                       className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-[#FAF8F5] rounded-2xl border border-[#F0EBE1] gap-3 hover:bg-white transition-all shadow-2xs"
                     >
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-serif font-semibold text-sm text-[#2B1E16]">{item.serviceTitle}</h4>
-                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                            item.status === 'In-Service'
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${item.status === 'In-Service'
                               ? 'bg-amber-100 text-amber-900 border border-amber-300'
                               : item.status === 'Completed'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : item.status === 'Cancelled'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-[#EAE4D8] text-[#2B1E16]'
-                          }`}>
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : item.status === 'Cancelled'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-[#EAE4D8] text-[#2B1E16]'
+                            }`}>
                             {item.status || 'Confirmed'}
                           </span>
                         </div>
@@ -399,7 +382,7 @@ const MyAccount = () => {
 
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <span className="font-serif font-bold text-sm text-[#2B1E16]">${item.totalAmount}</span>
-                        
+
                         <div className="flex items-center gap-2">
                           {isActive && (
                             <>

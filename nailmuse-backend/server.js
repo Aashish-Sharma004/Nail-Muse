@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
@@ -11,8 +12,15 @@ const userRoutes = require('./routes/userRoutes');
 const offerRoutes = require('./routes/offerRoutes');
 
 const app = express();
+
+// Enable CORS with credentials for any frontend origin
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
 
 // MongoDB Connection with auto-retry
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/nailmuse';

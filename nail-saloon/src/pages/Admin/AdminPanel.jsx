@@ -1,6 +1,7 @@
 // src/pages/Admin/AdminPanel.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import AppointmentsTable from '../../components/dashboard/AppointmentsTable';
 import ServicesManager from '../../components/admin/ServicesManager';
 import AnnouncementEditor from '../../components/admin/AnnouncementEditor';
@@ -26,6 +27,7 @@ import {
 
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const { isLoggedIn, isAdmin, loading: authLoading, logout } = useAuth();
 
   // Active section
   const [activeSection, setActiveSection] = useState('pulse'); // pulse, appointments, services, announcements, clients
@@ -78,14 +80,7 @@ const AdminPanel = () => {
   }, []);
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const storedUser = localStorage.getItem('user');
-    let currentUser = null;
-    try {
-      currentUser = storedUser ? JSON.parse(storedUser) : null;
-    } catch {}
-
-    const isAdmin = currentUser?.role === 'admin' || currentUser?.email === 'admin123@gmail.com';
+    if (authLoading) return; // Wait for initial session authentication check
 
     if (!isLoggedIn || !isAdmin) {
       alert('Access Restricted: The Admin Command Center is reserved for salon management. Please sign in with administrator credentials (admin123@gmail.com).');
@@ -94,12 +89,10 @@ const AdminPanel = () => {
     }
 
     loadAllData();
-  }, [loadAllData, navigate]);
+  }, [authLoading, isLoggedIn, isAdmin, loadAllData, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -200,13 +193,13 @@ const AdminPanel = () => {
 
   // Navigation Items
   const navItems = [
-    { id: 'pulse',         label: 'Studio Pulse',                    icon: '📊', desc: 'KPIs & Revenue Overview' },
-    { id: 'queue',         label: 'Live Queue',                      icon: '📡', desc: 'Real-time queue control' },
-    { id: 'appointments',  label: `Appointments (${bookings.length})`, icon: '📅', desc: 'Manage salon visits' },
-    { id: 'services',      label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
-    { id: 'announcements', label: 'Site Announcements',              icon: '📢', desc: 'Web app banner & promo code' },
-    { id: 'offers',        label: 'Email Offers & Blasts',           icon: '💌', desc: 'Direct client email promos' },
-    { id: 'clients',       label: `VIP Clients (${users.length})`,   icon: '👥', desc: 'Customer loyalty & tiers' }
+    { id: 'pulse', label: 'Studio Pulse', icon: '📊', desc: 'KPIs & Revenue Overview' },
+    { id: 'queue', label: 'Live Queue', icon: '📡', desc: 'Real-time queue control' },
+    { id: 'appointments', label: `Appointments (${bookings.length})`, icon: '📅', desc: 'Manage salon visits' },
+    { id: 'services', label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
+    { id: 'announcements', label: 'Site Announcements', icon: '📢', desc: 'Web app banner & promo code' },
+    { id: 'offers', label: 'Email Offers & Blasts', icon: '💌', desc: 'Direct client email promos' },
+    { id: 'clients', label: `VIP Clients (${users.length})`, icon: '👥', desc: 'Customer loyalty & tiers' }
   ];
 
   const totalRevenue = stats?.totalRevenue ?? bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -215,7 +208,7 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] pb-20">
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#2B1E16] text-[#FAF8F5] px-5 py-3 rounded-2xl shadow-xl border border-white/20 flex items-center gap-2.5 text-xs font-medium animate-bounce">
@@ -227,7 +220,7 @@ const AdminPanel = () => {
       {/* Admin Top Command Header */}
       <header className="bg-white border-b border-[#F0EBE1] sticky top-0 z-40 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          
+
           <div className="flex items-center gap-3">
             <Link to="/" className="text-xl font-serif font-bold text-[#2B1E16] flex items-center gap-2">
               <span className="w-7 h-7 rounded-lg bg-[#2B1E16] text-white flex items-center justify-center text-xs font-serif">NM</span>
@@ -276,7 +269,7 @@ const AdminPanel = () => {
 
       {/* Main Admin Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        
+
         {/* Navigation Tabs Bar */}
         <div className="flex overflow-x-auto gap-2 pb-4 mb-6 border-b border-[#F0EBE1] hide-scrollbar">
           {navItems.map(item => {
@@ -285,11 +278,10 @@ const AdminPanel = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
-                  isActive
+                className={`px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${isActive
                     ? 'bg-[#2B1E16] text-[#FAF8F5] shadow-sm'
                     : 'bg-white border border-[#F0EBE1] text-[#4A3B32] hover:border-[#2B1E16]'
-                }`}
+                  }`}
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
@@ -306,11 +298,11 @@ const AdminPanel = () => {
           </div>
         ) : (
           <div>
-            
+
             {/* 1. Studio Pulse Overview */}
             {activeSection === 'pulse' && (
               <div className="space-y-8 animate-fade-in">
-                
+
                 {/* Metric Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                   <div className="bg-white border border-[#F0EBE1] rounded-3xl p-6 shadow-sm">
@@ -344,7 +336,7 @@ const AdminPanel = () => {
 
                 {/* Quick Shortcuts & Live Web App Status */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  
+
                   {/* Left 2 Cols: Priority Appointment Stream */}
                   <div className="lg:col-span-2 bg-white border border-[#F0EBE1] rounded-3xl p-6 md:p-8 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
@@ -399,11 +391,10 @@ const AdminPanel = () => {
                     <div className="bg-white border border-[#F0EBE1] rounded-3xl p-6 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-serif text-lg font-semibold text-[#2B1E16]">Live Queue</h4>
-                        <span className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                          settings?.queueEnabled
+                        <span className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${settings?.queueEnabled
                             ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
                             : 'bg-gray-100 border border-gray-200 text-gray-600'
-                        }`}>
+                          }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${settings?.queueEnabled ? 'bg-emerald-600 animate-pulse' : 'bg-gray-400'}`}></span>
                           {settings?.queueEnabled ? 'Active' : 'Paused'}
                         </span>
