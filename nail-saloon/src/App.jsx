@@ -55,9 +55,9 @@ function App() {
               <Route path="/booking/confirmation" element={<Confirmation />} />
             </Routes>
           </Layout>
+          <SupportDrawer />
         </BookingProvider>
       </AuthProvider>
-      <SupportDrawer />
     </Router>
   );
 }

@@ -1,114 +1,75 @@
 // src/pages/Dashboard/LiveTracker.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getQueueStatus, getUserBookings } from '../../services/api';
-import {
-  Clock, Users, Radio, ArrowLeft, RefreshCw,
-  AlertCircle, CheckCircle, Timer, MessageSquare,
-  Wifi, WifiOff, ChevronRight, Scissors, Calendar, User, Sparkles,
-  CheckCircle2, Bell
-} from 'lucide-react';
+import { Radio, Clock, RefreshCw, WifiOff, CheckCircle, Sparkles, AlertCircle } from 'lucide-react';
 
-const POLL_INTERVAL = 15000; // 15 seconds
+const POLL_MS = 12000; // re-fetch every 12 seconds
 
-const statusConfig = {
-  'On Schedule': { color: '#16a34a', bg: 'rgba(22,163,74,0.12)', label: 'On Schedule' },
-  'Slightly Delayed': { color: '#d97706', bg: 'rgba(217,119,6,0.12)', label: 'Slightly Delayed' },
-  'Running Late': { color: '#dc2626', bg: 'rgba(220,38,38,0.12)', label: 'Running Late' },
+const STATUS_STYLE = {
+  'On Schedule':      { color: '#16a34a', bg: 'rgba(22,163,74,0.15)'  },
+  'Slightly Delayed': { color: '#d97706', bg: 'rgba(217,119,6,0.15)'  },
+  'Running Late':     { color: '#dc2626', bg: 'rgba(220,38,38,0.15)'  },
 };
 
+// ── Format mm:ss countdown ────────────────────────────────────────────────────
+function fmtCountdown(secs) {
+  if (!secs || secs <= 0) return '0m 00s';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}m ${String(s).padStart(2, '0')}s`;
+}
+
+// ── SVG Ring ─────────────────────────────────────────────────────────────────
+function Ring({ pct }) {
+  const R = 52, CIRC = 2 * Math.PI * R;
+  const offset = CIRC * (1 - Math.max(0, Math.min(1, pct)));
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
+      <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="9" />
+      <circle cx="60" cy="60" r={R} fill="none" stroke="#d4956b" strokeWidth="9"
+        strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={offset}
+        className="transition-all duration-1000" />
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 const LiveTracker = () => {
-  const { bookingData } = useBooking();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  // Live clock
-  const [now, setNow] = useState(new Date());
-
-  // Backend queue state from SalonSettings
-  const [queue, setQueue] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(true);
-  const [lastFetched, setLastFetched] = useState(null);
-
-  // Active customer booking state
-  const [activeBooking, setActiveBooking] = useState(null);
-
-  // Local countdown (seconds), seeded from backend estimatedWaitMinutes
+  const [queue, setQueue]         = useState(null);
+  const [userBookings, setUserBookings] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [online, setOnline]       = useState(true);
+  const [lastSync, setLastSync]   = useState(null);
+  const [now, setNow]             = useState(new Date());
   const [secondsLeft, setSecondsLeft] = useState(null);
-  const countdownRef = useRef(null);
 
-  // ── 1. Live Clock ──
+  const countdownRef = useRef(null);
+  const initialSecsRef = useRef(null);
+
+  // ── Live clock ──
   useEffect(() => {
-    const tick = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(tick);
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
-  // ── 2. Resolve Active Customer Booking ──
-  useEffect(() => {
-    // Priority 1: Passed via location state (e.g. from MyAccount)
-    if (location.state?.booking) {
-      setActiveBooking(location.state.booking);
-      return;
-    }
-
-    // Priority 2: BookingData from active booking flow
-    if (bookingData?.confirmedBooking) {
-      setActiveBooking(bookingData.confirmedBooking);
-      return;
-    }
-    if (bookingData?.service && bookingData?.time) {
-      setActiveBooking({
-        serviceTitle: bookingData.service.title,
-        technicianName: bookingData.technician?.name || 'Assigned Specialist',
-        date: bookingData.date || 'Today',
-        time: bookingData.time,
-        status: 'Confirmed'
-      });
-      return;
-    }
-
-    // Priority 3: LocalStorage persisted latest booking
-    try {
-      const storedLatest = localStorage.getItem('nailmuse_latest_booking');
-      if (storedLatest) {
-        const parsed = JSON.parse(storedLatest);
-        if (parsed?.serviceTitle || parsed?.service) {
-          setActiveBooking(parsed);
-        }
-      }
-    } catch {}
-
-    // Priority 4: Fetch from backend for logged in user
-    if (user?.email) {
-      getUserBookings(user.email)
-        .then(res => {
-          const bookings = res.data || [];
-          if (bookings.length > 0) {
-            // Pick most relevant active booking (In-Service or Confirmed)
-            const active = bookings.find(b => b.status === 'In-Service' || b.status === 'Confirmed') || bookings[0];
-            setActiveBooking(active);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [bookingData, location.state, user]);
-
-  // ── 3. Fetch Queue Status from Backend ──
+  // ── Fetch queue settings ──
   const fetchQueue = useCallback(async () => {
     try {
       const res = await getQueueStatus();
       const data = res.data;
       setQueue(data);
       setOnline(true);
-      setLastFetched(new Date());
+      setLastSync(new Date());
 
-      // Seed countdown from backend value (convert minutes → seconds)
-      if (typeof data.estimatedWaitMinutes === 'number') {
-        setSecondsLeft(data.estimatedWaitMinutes * 60);
+      // Reset countdown when wait minutes change
+      const newSecs = (data.estimatedWaitMinutes || 0) * 60;
+      if (newSecs !== initialSecsRef.current) {
+        initialSecsRef.current = newSecs;
+        setSecondsLeft(newSecs);
       }
     } catch {
       setOnline(false);
@@ -119,435 +80,312 @@ const LiveTracker = () => {
 
   useEffect(() => {
     fetchQueue();
-    const poll = setInterval(fetchQueue, POLL_INTERVAL);
+    const poll = setInterval(fetchQueue, POLL_MS);
     return () => clearInterval(poll);
   }, [fetchQueue]);
 
-  // ── 4. Local Countdown Tick ──
+  // ── Local countdown tick ──
   useEffect(() => {
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    if (secondsLeft === null || secondsLeft <= 0) return;
-    countdownRef.current = setInterval(() => {
-      setSecondsLeft(s => (s > 0 ? s - 1 : 0));
-    }, 1000);
+    clearInterval(countdownRef.current);
+    if (!secondsLeft || secondsLeft <= 0) return;
+    countdownRef.current = setInterval(() =>
+      setSecondsLeft(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(countdownRef.current);
   }, [secondsLeft]);
 
-  // ── Helpers ──
-  const fmtTime = (d) =>
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // ── Fetch user's bookings ──
+  useEffect(() => {
+    if (!user?.email) return;
+    getUserBookings(user.email)
+      .then(res => setUserBookings(res.data || []))
+      .catch(() => {});
+  }, [user]);
 
-  const fmtCountdown = (secs) => {
-    if (secs === null || secs <= 0) return '0m 00s';
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}m ${String(s).padStart(2, '0')}s`;
-  };
+  // ── Derive active user booking ──────────────────────────────────────────
+  const activeBooking =
+    userBookings.find(b => b.status === 'In-Service') ||
+    userBookings.find(b => b.status === 'Confirmed') ||
+    null;
 
-  const sc = statusConfig[queue?.queueStatus] ?? statusConfig['On Schedule'];
+  const userSlot    = activeBooking?.time || null;
+  const userService = activeBooking?.serviceTitle || null;
+  const userTech    = activeBooking?.technicianName || 'Your Artist';
+  const userStatus  = activeBooking?.status || null;
 
-  // User booking details
-  const userServiceName = activeBooking?.serviceTitle || activeBooking?.service?.title || null;
-  const userTechnician = activeBooking?.technicianName || activeBooking?.technician?.name || 'Your Assigned Artist';
-  const userDate = activeBooking?.date || 'Today';
-  const userSlot = activeBooking?.time || null;
-  const userStatus = activeBooking?.status || 'Confirmed';
-
-  // Check if currently serving matches the user
-  const servingSlot = queue?.currentlyServingSlot || '12:30 PM';
-  const isCurrentlyServingUser = Boolean(
-    (userSlot && servingSlot && userSlot.trim().toLowerCase() === servingSlot.trim().toLowerCase()) ||
-    userStatus === 'In-Service'
+  // ── Is user currently being served? ──────────────────────────────────────
+  const isMyTurn = Boolean(
+    userStatus === 'In-Service' ||
+    (userSlot && queue?.currentlyServingSlot &&
+      userSlot.trim().toLowerCase() === queue.currentlyServingSlot.trim().toLowerCase())
   );
 
-  const totalInitialSecs = (queue?.estimatedWaitMinutes ?? 0) * 60;
-  const progressPct = totalInitialSecs > 0
-    ? Math.max(0, Math.min(1, 1 - (secondsLeft ?? 0) / totalInitialSecs))
-    : 1;
+  const sc  = STATUS_STYLE[queue?.queueStatus] || STATUS_STYLE['On Schedule'];
+  const pct = initialSecsRef.current > 0 ? (secondsLeft || 0) / initialSecsRef.current : 0;
+  const fmtTime = d => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  // SVG ring params
-  const R = 54, CIRC = 2 * Math.PI * R;
-  const dashOffset = CIRC * (1 - progressPct);
-
+  // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center" style={{ fontFamily: "'Josefin Sans', sans-serif" }}>
-        <div className="flex flex-col items-center justify-center gap-4">
-          <RefreshCw size={36} className="text-[#8B5E3C] animate-spin" />
-          <h2 className="font-serif text-2xl text-[#2B1E16]" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-            Connecting to Live Studio Queue...
-          </h2>
-          <p className="text-[#6B5344] text-sm">
-            Fetching real-time technician station data from MongoDB Atlas
-          </p>
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
+        <RefreshCw size={36} className="text-[#8B5E3C] animate-spin mx-auto mb-4" />
+        <p className="font-serif text-xl text-[#2B1E16]">Connecting to Live Queue...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 animate-fade-in" style={{ fontFamily: "'Josefin Sans', sans-serif" }}>
-      
-      {/* ── Header Bar ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="max-w-3xl mx-auto px-4 py-10 space-y-5">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="relative flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${queue?.queueEnabled ? 'bg-emerald-400' : 'bg-rose-400'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${queue?.queueEnabled ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
+                ${queue?.queueEnabled ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5
+                ${queue?.queueEnabled ? 'bg-emerald-500' : 'bg-rose-500'}`} />
             </span>
-            <span className={`text-[11px] font-bold uppercase tracking-widest ${queue?.queueEnabled ? 'text-emerald-700' : 'text-rose-700'}`}>
-              {queue?.queueEnabled ? 'Live Salon Queue Active' : 'Live Queue Offline / Paused'}
+            <span className={`text-[11px] font-bold uppercase tracking-widest
+              ${queue?.queueEnabled ? 'text-emerald-700' : 'text-rose-600'}`}>
+              {queue?.queueEnabled ? 'Live Queue Active' : 'Queue Offline'}
             </span>
             {!online && (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
-                <WifiOff size={11} /> Offline Cached
+              <span className="flex items-center gap-1 text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                <WifiOff size={10} /> Cached
               </span>
             )}
           </div>
-
-          <h1 className="text-3xl md:text-4xl font-serif text-[#2B1E16]" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-            Live Queue & Appointment Tracker
-          </h1>
-          <p className="text-xs text-[#6B5344] mt-1.5 flex items-center gap-1.5">
-            <span>Auto-refreshes every 15s</span> • <span>Synced: {lastFetched ? fmtTime(lastFetched) : '—'}</span>
+          <h1 className="font-serif text-3xl font-bold text-[#2B1E16]">Live Queue Tracker</h1>
+          <p className="text-xs text-[#6B5344] mt-1">
+            Auto-refreshes every 12s · Last sync: {lastSync ? fmtTime(lastSync) : '—'}
           </p>
         </div>
-
-        <div className="flex items-center gap-2.5">
-          <button 
-            onClick={fetchQueue}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#EDE5D8] rounded-xl text-xs font-semibold text-[#2B1E16] hover:bg-[#FAF8F5] transition-all shadow-2xs cursor-pointer"
-          >
-            <RefreshCw size={13} /> Refresh
-          </button>
-          <button 
-            onClick={() => navigate('/account')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#EDE5D8] rounded-xl text-xs font-semibold text-[#2B1E16] hover:bg-[#FAF8F5] transition-all shadow-2xs cursor-pointer"
-          >
-            <ArrowLeft size={13} /> My Account
-          </button>
-        </div>
+        <button
+          onClick={fetchQueue}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#EDE5D8] rounded-xl text-xs font-semibold text-[#2B1E16] hover:bg-[#FAF8F5] transition-all shadow-sm cursor-pointer flex-shrink-0"
+        >
+          <RefreshCw size={12} /> Refresh
+        </button>
       </div>
 
-      {/* ── Offline Banner ── */}
-      {!online && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>Network connection interrupted. Displaying last synchronized queue state.</span>
-        </div>
-      )}
-
-      {/* ── Active User In-Service Notification Banner ── */}
-      {isCurrentlyServingUser && (
-        <div className="mb-6 p-5 rounded-3xl bg-linear-to-r from-emerald-800 to-emerald-950 text-white shadow-lg flex items-center justify-between gap-4 border border-emerald-600/40 animate-pulse">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-              <Sparkles size={24} className="text-amber-300" />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest bg-amber-400 text-emerald-950 px-2.5 py-0.5 rounded-full">
-                It's Your Turn!
-              </span>
-              <h3 className="text-xl font-serif font-bold mt-1" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-                Your service is now underway at Station 01!
-              </h3>
-              <p className="text-xs text-white/80">
-                Please take a seat with {userTechnician}. Relax and enjoy your treatment.
-              </p>
-            </div>
-          </div>
-          <div className="text-right hidden sm:block">
-            <span className="text-xs font-mono bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
-              Active Now
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Queue Disabled State ── */}
+      {/* ── Queue Paused banner ──────────────────────────────────────────── */}
       {!queue?.queueEnabled && (
-        <div className="bg-white border border-[#EDE5D8] rounded-3xl p-8 text-center shadow-sm mb-6 space-y-3">
-          <AlertCircle size={36} className="text-amber-600 mx-auto" />
-          <h3 className="font-serif text-xl text-[#2B1E16]" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-            Live Queue Tracking is Currently Paused
-          </h3>
-          <p className="text-xs text-[#6B5344] max-w-md mx-auto leading-relaxed">
-            The salon's real-time queue broadcasting is currently resting. Your confirmed booking is strictly reserved — please arrive at your scheduled time.
+        <div className="bg-white border border-[#EDE5D8] rounded-2xl p-6 text-center shadow-sm space-y-2">
+          <AlertCircle size={32} className="text-amber-500 mx-auto" />
+          <p className="font-serif text-lg font-bold text-[#2B1E16]">Queue Broadcasting is Paused</p>
+          <p className="text-xs text-[#6B5344] max-w-sm mx-auto">
+            The salon is not broadcasting live updates right now. Your booking is confirmed — please arrive at your scheduled time.
           </p>
-          {userSlot && (
-            <div className="inline-block mt-2 px-4 py-2 bg-[#FAF8F5] border border-[#EDE5D8] rounded-2xl text-xs font-semibold text-[#2B1E16]">
-              Your Booked Session: {userSlot} • {userServiceName}
+          {activeBooking && (
+            <div className="inline-block mt-2 px-4 py-2 bg-[#FAF8F5] border border-[#EDE5D8] rounded-xl text-xs font-semibold text-[#2B1E16]">
+              Your appointment: {userSlot} · {userService}
             </div>
           )}
         </div>
       )}
 
-      {/* ── Main Dark Live Status Card ── */}
+      {/* ── It's Your Turn banner ────────────────────────────────────────── */}
+      {queue?.queueEnabled && isMyTurn && (
+        <div className="rounded-2xl p-5 flex items-center gap-4 shadow-lg animate-pulse"
+             style={{ background: 'linear-gradient(135deg, #065f46, #047857)' }}>
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={22} className="text-amber-300" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full">
+              It&apos;s Your Turn!
+            </span>
+            <p className="font-serif text-xl font-bold text-white mt-1">Your service is underway at Station 01!</p>
+            <p className="text-xs text-white/80">Please take a seat with {userTech}. Enjoy your treatment 💅</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Main dark stats card ─────────────────────────────────────────── */}
       {queue?.queueEnabled && (
-        <div className="bg-linear-to-br from-[#2B1E16] via-[#38271d] to-[#2B1E16] text-[#FAF8F5] rounded-3xl p-6 md:p-8 shadow-xl mb-8 relative overflow-hidden border border-white/10">
-          
-          {/* Subtle Ambient Backdrops */}
-          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-[#d4956b]/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+        <div className="rounded-3xl p-6 md:p-8 shadow-xl border border-white/10 relative overflow-hidden"
+             style={{ background: 'linear-gradient(135deg, #2B1E16 0%, #3d2a1e 50%, #2B1E16 100%)' }}>
+
+          {/* Ambient glow */}
+          <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full bg-[#d4956b]/15 blur-3xl pointer-events-none" />
 
           <div className="relative z-10">
-            {/* Top Bar: Status Badge & Live Clock */}
-            <div className="flex justify-between items-center pb-6 mb-6 border-b border-white/15 flex-wrap gap-3">
-              <span 
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm"
-                style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.color}50` }}
-              >
-                <Radio size={12} className="animate-pulse" />
-                Salon Pace: {queue.queueStatus}
+            {/* Status bar */}
+            <div className="flex items-center justify-between mb-6 pb-5 border-b border-white/15 flex-wrap gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider"
+                    style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.color}50` }}>
+                <Radio size={11} className="animate-pulse" />
+                {queue.queueStatus || 'On Schedule'}
               </span>
-
-              <div className="flex items-center gap-2 text-xs text-white/70">
-                <Clock size={14} />
-                <span>Studio Local Time:</span>
-                <span className="font-mono font-bold text-white text-sm bg-white/10 px-2 py-0.5 rounded-md">
-                  {fmtTime(now)}
-                </span>
-              </div>
+              <span className="text-xs text-white/60 flex items-center gap-1.5">
+                <Clock size={13} />
+                <span className="font-mono font-bold text-white">{fmtTime(now)}</span>
+              </span>
             </div>
 
-            {/* 3 Metrics Row */}
+            {/* 3-col grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-              
-              {/* 1. Currently Serving */}
-              <div className="border-b md:border-b-0 md:border-r border-white/15 pb-5 md:pb-0 md:pr-4">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/80 mb-1">
-                  Currently Serving
+
+              {/* Now Serving */}
+              <div className="md:border-r border-white/15 md:pr-6">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/70 mb-2">Now Serving</p>
+                <p className="font-serif text-3xl font-bold text-white leading-tight">
+                  {queue.currentlyServingSlot || '—'}
                 </p>
-                <h2 className="text-3xl font-serif font-bold text-white leading-tight" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-                  {queue.currentlyServingSlot || '12:30 PM'}
-                </h2>
-                <p className="text-xs text-white/75 mt-1.5 leading-relaxed">
-                  {queue.currentlyServingName ? (
-                    <span>
-                      <strong className="text-white">{queue.currentlyServingName}</strong>
-                      {queue.currentlyServingService ? ` · ${queue.currentlyServingService}` : ''}
-                    </span>
-                  ) : (
-                    'Technicians servicing ongoing clients'
-                  )}
+                <p className="text-xs text-white/70 mt-1">
+                  {queue.currentlyServingName
+                    ? <>{queue.currentlyServingName} · <span className="text-white/50">{queue.currentlyServingService}</span></>
+                    : 'Station open'}
                 </p>
-                <span className="inline-block mt-2 text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/80">
-                  Station 01 Active
-                </span>
               </div>
 
-              {/* 2. Wait Time Countdown Ring */}
-              <div className="text-center py-2 md:py-0 border-b md:border-b-0 md:border-r border-white/15 pb-5 md:pb-0 md:px-4">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/80 mb-2">
-                  Estimated Wait Time
-                </p>
-
-                <div className="relative w-28 h-28 mx-auto mb-2">
-                  <svg width="112" height="112" viewBox="0 0 120 120" className="-rotate-90">
-                    <circle 
-                      cx="60" cy="60" r={R} 
-                      fill="none" 
-                      stroke="rgba(255,255,255,0.12)" 
-                      strokeWidth="8" 
-                    />
-                    <circle 
-                      cx="60" cy="60" r={R} 
-                      fill="none" 
-                      stroke="#d4956b" 
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={CIRC}
-                      strokeDashoffset={dashOffset}
-                      className="transition-all duration-1000"
-                    />
-                  </svg>
+              {/* Countdown ring */}
+              <div className="text-center md:border-r border-white/15 md:px-4">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/70 mb-2">Est. Wait</p>
+                <div className="relative w-[120px] h-[120px] mx-auto">
+                  <Ring pct={pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="font-mono text-lg font-bold text-white leading-none">
+                    <span className="font-mono text-base font-bold text-white leading-none">
                       {fmtCountdown(secondsLeft)}
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider text-white/60 mt-1">Remaining</span>
+                    <span className="text-[9px] uppercase text-white/50 mt-1">remaining</span>
                   </div>
                 </div>
-
-                <p className="text-[11px] text-white/60">
-                  Ticks live locally between pulses
-                </p>
               </div>
 
-              {/* 3. Your Appointment Status */}
+              {/* Your appointment */}
               <div className="md:pl-4">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/80 mb-1">
-                  Your Appointment
-                </p>
-                
-                {userSlot ? (
+                <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/70 mb-2">Your Slot</p>
+                {activeBooking ? (
                   <>
-                    <h2 className="text-3xl font-serif font-bold text-white leading-tight" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-                      {userSlot}
-                    </h2>
-                    <p className="text-xs text-white/80 mt-1 font-medium">
-                      {userServiceName || 'Reserved Service'}
-                    </p>
-                    <p className="text-[11px] text-white/60 mt-0.5">
-                      Stylist: {userTechnician} • {userDate}
-                    </p>
-                    <div className="mt-2.5">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                        isCurrentlyServingUser 
-                          ? 'bg-emerald-400 text-emerald-950 font-black' 
-                          : 'bg-white/15 text-white'
-                      }`}>
-                        {isCurrentlyServingUser ? '⭐ Now In Service' : '⏳ Up Next In Queue'}
-                      </span>
-                    </div>
+                    <p className="font-serif text-3xl font-bold text-white">{userSlot}</p>
+                    <p className="text-xs text-white/80 mt-1 font-medium">{userService}</p>
+                    <p className="text-[11px] text-white/50 mt-0.5">with {userTech}</p>
+                    <span className={`inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full
+                      ${isMyTurn ? 'bg-emerald-400 text-emerald-950' : 'bg-white/15 text-white'}`}>
+                      {isMyTurn ? '⭐ In Service Now' : '⏳ Up Next'}
+                    </span>
                   </>
                 ) : (
-                  <div className="space-y-2 py-1">
-                    <p className="text-xs text-white/70">No booking active in this session.</p>
-                    <Link 
-                      to="/services" 
-                      className="inline-block bg-[#d4956b] text-[#2B1E16] text-xs font-bold px-4 py-2 rounded-xl hover:bg-[#e6ab83] transition-colors"
-                    >
-                      Book a Service &rarr;
+                  <div className="space-y-2">
+                    <p className="text-xs text-white/60">No active booking found.</p>
+                    <Link to="/services"
+                          className="inline-block bg-[#d4956b] text-[#2B1E16] text-xs font-bold px-4 py-2 rounded-xl hover:bg-[#e6ab83] transition-colors">
+                      Book a Service →
                     </Link>
                   </div>
                 )}
               </div>
-
             </div>
 
-            {/* Admin Broadcast Alert Box */}
+            {/* Broadcast message */}
             {queue.queueMessage && (
-              <div className="mt-6 p-4 rounded-2xl bg-white/10 border border-white/20 flex items-start gap-3 backdrop-blur-xs">
-                <MessageSquare size={16} className="text-[#d4956b] shrink-0 mt-0.5" />
-                <p className="text-xs text-white/90 leading-relaxed">
-                  <strong className="text-white">Salon Notice:</strong> {queue.queueMessage}
-                </p>
+              <div className="mt-5 pt-5 border-t border-white/10 flex items-start gap-2.5 text-xs text-white/80 leading-relaxed">
+                <span className="text-amber-400 flex-shrink-0 mt-0.5">📢</span>
+                <span><strong className="text-white">Salon Notice:</strong> {queue.queueMessage}</span>
               </div>
             )}
-
           </div>
         </div>
       )}
 
-      {/* ── Today's Queue Timeline ── */}
-      <div className="bg-white border border-[#EDE5D8] rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
-        <div className="flex justify-between items-center pb-3 border-b border-[#F0EBE1]">
-          <div>
-            <h3 className="text-xl font-serif text-[#2B1E16] font-bold" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-              Today's Station Timeline
-            </h3>
-            <p className="text-xs text-[#6B5344]">
-              Real-time progress flow of salon treatments today
-            </p>
-          </div>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5">
-            <Wifi size={12} /> Atlas Connected
-          </span>
-        </div>
-
-        <div className="space-y-3">
-          
-          {/* 1. Prior Session (Completed) */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#FAF8F5] border border-[#EDE5D8]/70 text-xs">
-            <div className="w-9 h-9 rounded-full bg-[#EAE4D8] text-[#6B5344] flex items-center justify-center shrink-0">
-              <CheckCircle size={16} />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-[#2B1E16] text-sm">Prior Appointment Block</p>
-              <p className="text-[#6B5344]">Station sanitized and completed successfully</p>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B5344] bg-[#EAE4D8] px-2.5 py-1 rounded-full">
-              Completed
-            </span>
-          </div>
-
-          {/* 2. Currently Active Slot */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50/80 border border-amber-300 shadow-xs text-xs">
-            <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 animate-pulse">
-              <Radio size={16} />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-[#2B1E16] text-sm">{servingSlot}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md">
-                  Active Now
-                </span>
-              </div>
-              <p className="text-[#6B5344] mt-0.5">
-                {queue?.currentlyServingName ? (
-                  <span>Currently servicing {queue.currentlyServingName} ({queue.currentlyServingService || 'Treatment'})</span>
-                ) : (
-                  'Station in session'
-                )}
-              </p>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200 px-3 py-1 rounded-full">
-              In-Service
-            </span>
-          </div>
-
-          {/* 3. User's Booking Slot */}
-          {userSlot && (
-            <div className={`flex items-center gap-4 p-4 rounded-2xl text-xs transition-all ${
-              isCurrentlyServingUser 
-                ? 'bg-emerald-900 text-white shadow-md border border-emerald-700' 
-                : 'bg-[#2B1E16] text-[#FAF8F5] shadow-md'
-            }`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${
-                isCurrentlyServingUser ? 'bg-amber-400 text-emerald-950' : 'bg-[#FAF8F5] text-[#2B1E16]'
-              }`}>
-                YOU
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-white">{userSlot}</span>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                    isCurrentlyServingUser ? 'bg-amber-400 text-emerald-950' : 'bg-white/20 text-white'
-                  }`}>
-                    {isCurrentlyServingUser ? 'Now At Station' : 'Your Slot'}
-                  </span>
-                </div>
-                <p className="text-white/80 mt-0.5">
-                  {userServiceName || 'Reserved Service'} with {userTechnician}
-                </p>
-              </div>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-                isCurrentlyServingUser ? 'bg-white text-emerald-950 font-extrabold' : 'bg-white/20 text-white'
-              }`}>
-                {isCurrentlyServingUser ? 'In-Progress' : 'Up Next'}
-              </span>
-            </div>
-          )}
-
-          {/* 4. Upcoming Slot */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#FAF8F5] border border-[#EDE5D8]/70 text-xs">
-            <div className="w-9 h-9 rounded-full bg-[#EAE4D8] text-[#6B5344] flex items-center justify-center shrink-0">
-              <Timer size={16} />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-[#2B1E16] text-sm">Subsequent Scheduled Sessions</p>
-              <p className="text-[#6B5344]">Reserved client sessions following in the queue</p>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B5344] bg-[#EAE4D8] px-2.5 py-1 rounded-full">
-              Scheduled
-            </span>
-          </div>
-
-        </div>
-
-        {/* Footer Info */}
-        <div className="pt-4 border-t border-[#F0EBE1] flex items-start gap-2.5 text-xs text-[#6B5344] leading-relaxed">
-          <ChevronRight size={15} className="shrink-0 text-[#2B1E16] mt-0.5" />
-          <span>
-            Queue updates are pushed dynamically from the salon's command center. The timer counts down live in seconds between synchronization pulses. If you arrive early, feel free to enjoy our complimentary espresso bar!
-          </span>
-        </div>
-      </div>
+      {/* ── Queue Timeline (real bookings) ───────────────────────────────── */}
+      {queue?.queueEnabled && (
+        <QueueTimeline userSlot={userSlot} isMyTurn={isMyTurn} queue={queue} />
+      )}
 
     </div>
   );
 };
+
+// ── Queue Timeline component ──────────────────────────────────────────────────
+function QueueTimeline({ userSlot, isMyTurn, queue }) {
+  return (
+    <div className="bg-white border border-[#EDE5D8] rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#F0EBE1] flex items-center justify-between">
+        <h3 className="font-serif text-base font-bold text-[#2B1E16]">Station Timeline</h3>
+        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Live
+        </span>
+      </div>
+
+      <div className="divide-y divide-[#F5F0EB]">
+        {/* Completed slot */}
+        <div className="flex items-center gap-3 px-5 py-4">
+          <div className="w-8 h-8 rounded-full bg-[#EDE5D8] text-[#6B5344] flex items-center justify-center flex-shrink-0">
+            <CheckCircle size={15} />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-[#2B1E16]">Previous Session</p>
+            <p className="text-[11px] text-[#6B5344]">Station sanitised &amp; ready</p>
+          </div>
+          <span className="text-[10px] font-bold uppercase bg-[#EDE5D8] text-[#6B5344] px-2 py-0.5 rounded-full">Done</span>
+        </div>
+
+        {/* Currently serving */}
+        <div className="flex items-center gap-3 px-5 py-4 bg-amber-50">
+          <div className="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center flex-shrink-0 animate-pulse">
+            <Radio size={14} />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-[#2B1E16]">
+              {queue.currentlyServingSlot || 'Now'}
+              <span className="ml-2 text-[10px] font-bold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded-md">Active</span>
+            </p>
+            <p className="text-[11px] text-amber-800 mt-0.5">
+              {queue.currentlyServingName
+                ? `Serving ${queue.currentlyServingName} — ${queue.currentlyServingService || 'Treatment'}`
+                : 'Station in session'}
+            </p>
+          </div>
+          <span className="text-[10px] font-bold uppercase bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">In-Service</span>
+        </div>
+
+        {/* User slot */}
+        {userSlot && (
+          <div className={`flex items-center gap-3 px-5 py-4
+            ${isMyTurn ? 'bg-emerald-900' : 'bg-[#2B1E16]'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0
+              ${isMyTurn ? 'bg-amber-400 text-emerald-950' : 'bg-white text-[#2B1E16]'}`}>
+              YOU
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-bold text-white">
+                {userSlot}
+                <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md
+                  ${isMyTurn ? 'bg-amber-400 text-emerald-950' : 'bg-white/20 text-white'}`}>
+                  {isMyTurn ? 'At Station Now' : 'Your Slot'}
+                </span>
+              </p>
+              <p className="text-[11px] text-white/70 mt-0.5">Your reserved appointment</p>
+            </div>
+            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full
+              ${isMyTurn ? 'bg-white text-emerald-900' : 'bg-white/20 text-white'}`}>
+              {isMyTurn ? 'In Progress' : 'Up Next'}
+            </span>
+          </div>
+        )}
+
+        {/* Upcoming */}
+        <div className="flex items-center gap-3 px-5 py-4">
+          <div className="w-8 h-8 rounded-full bg-[#EDE5D8] text-[#6B5344] flex items-center justify-center flex-shrink-0">
+            <Clock size={14} />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-[#2B1E16]">Upcoming Sessions</p>
+            <p className="text-[11px] text-[#6B5344]">Reserved slots following in queue</p>
+          </div>
+          <span className="text-[10px] font-bold uppercase bg-[#EDE5D8] text-[#6B5344] px-2 py-0.5 rounded-full">Scheduled</span>
+        </div>
+      </div>
+
+      <div className="px-5 py-3 border-t border-[#F0EBE1] text-[11px] text-[#6B5344]">
+        ℹ️ Queue refreshes automatically every 12 seconds. Walk-ins welcome subject to availability.
+      </div>
+    </div>
+  );
+}
 
 export default LiveTracker;

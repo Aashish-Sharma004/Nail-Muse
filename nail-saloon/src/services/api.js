@@ -56,4 +56,13 @@ export const updateTechnician = (id, techData) => API.put(`/technicians/${id}`, 
 export const deleteTechnician = (id) => API.delete(`/technicians/${id}`);
 export const toggleTechnicianAvailability = (id) => API.patch(`/technicians/${id}/toggle-availability`);
 
+// Chat / Support endpoints
+export const sendChatMessage    = (data)      => API.post('/chat/message', data);
+export const getChatSession     = (sessionId) => API.get(`/chat/session/${sessionId}`);
+export const getAdminConvos     = ()          => API.get('/chat/admin/conversations');
+export const getAdminThread     = (sessionId) => API.get(`/chat/admin/session/${sessionId}`);
+export const sendAdminReply     = (data)      => API.post('/chat/admin/reply', data);
+export const resolveConversation= (sessionId, resolved) => API.patch(`/chat/admin/resolve/${sessionId}`, { resolved });
+export const deleteConversation = (sessionId) => API.delete(`/chat/admin/session/${sessionId}`);
+
 export default API;

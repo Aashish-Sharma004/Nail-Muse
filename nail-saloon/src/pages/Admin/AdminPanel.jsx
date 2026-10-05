@@ -9,6 +9,7 @@ import ClientsManager from '../../components/admin/ClientsManager';
 import QueueManager from '../../components/admin/QueueManager';
 import OffersManager from '../../components/admin/OffersManager';
 import TechniciansManager from '../../components/admin/TechniciansManager';
+import SupportInbox from '../../components/admin/SupportInbox';
 import NewBookingModal from '../../components/dashboard/NewBookingModal';
 import {
   getAllBookings,
@@ -266,7 +267,8 @@ const AdminPanel = () => {
     { id: 'services', label: `Services Catalog (${services.length})`, icon: '💅', desc: 'Add & edit treatments live' },
     { id: 'announcements', label: 'Site Announcements', icon: '📢', desc: 'Web app banner & promo code' },
     { id: 'offers', label: 'Email Offers & Blasts', icon: '💌', desc: 'Direct client email promos' },
-    { id: 'clients', label: `VIP Clients (${users.length})`, icon: '👥', desc: 'Customer loyalty & tiers' }
+    { id: 'clients', label: `VIP Clients (${users.length})`, icon: '👥', desc: 'Customer loyalty & tiers' },
+    { id: 'support', label: 'Support Inbox', icon: '💬', desc: 'Client messages & live chat' }
   ];
 
   const totalRevenue = stats?.totalRevenue ?? bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -606,6 +608,13 @@ const AdminPanel = () => {
                 onUpdateLoyalty={handleUpdateLoyalty}
                 onSendOffer={handleOpenOfferComposer}
               />
+            )}
+
+            {/* 7. Support Inbox */}
+            {activeSection === 'support' && (
+              <div className="animate-fade-in">
+                <SupportInbox showToast={showToast} />
+              </div>
             )}
 
           </div>
