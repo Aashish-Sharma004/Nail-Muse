@@ -299,21 +299,8 @@ const Home = () => {
             Explore our services, meet our artists, and read what our clients say.
           </p>
           <div className="nm-hero-actions">
-            <a href="/services" className="nm-btn-primary">
-              <Sparkles size={16} /> Book a Service
-            </a>
-            <a href="/tracker"
-               style={{
-                 display: 'inline-flex', alignItems: 'center', gap: '8px',
-                 background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
-                 border: '1px solid rgba(255,255,255,0.22)', color: '#FAF8F5',
-                 padding: '15px 32px', borderRadius: '100px',
-                 fontSize: '15px', fontWeight: 600, textDecoration: 'none',
-                 transition: 'all 0.3s ease',
-               }}
-            >
-              <ArrowRight size={16} /> Live Queue
-            </a>
+           
+           
           </div>
         </div>
 
